@@ -57,8 +57,8 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
             $package->hasViews(static::$viewNamespace);
         }
 
-        if (file_exists($package->basePath('/../routes/web.php'))) {
-            $package->hasRoute('web');
+        if (file_exists($package->basePath('/../routes/api.php'))) {
+            $package->hasRoute('api');
         }
     }
 

@@ -5,6 +5,7 @@ namespace A21ns1g4ts\FilamentCollections\Filament\Resources;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\CreateCollectionConfigs;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\EditCollectionConfigs;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\ListCollectionConfigs;
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\DataRelationManager;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
@@ -42,7 +43,7 @@ class CollectionConfigResource extends Resource
                             ->regex('/^[a-z_]+$/')
                             ->unique(CollectionConfig::class, 'key', ignoreRecord: true)
                             ->columnSpan(2)
-                            ->disabled(fn ($operation) => $operation === 'edit'),
+                            ->disabled(fn($operation) => $operation === 'edit'),
 
                         Textarea::make('description')
                             ->label('Descrição')
@@ -58,16 +59,16 @@ class CollectionConfigResource extends Resource
                         Repeater::make('schema_builder')
                             ->label('Campos')
                             ->addActionLabel('Adicionar Campo')
-                            ->itemLabel(fn ($state) => $state['name'] ?? 'Novo Campo')
+                            ->itemLabel(fn($state) => $state['name'] ?? 'Novo Campo')
                             ->collapsible()
                             ->cloneable()
+                            ->reactive()
                             ->orderable()
-                            ->live(debounce: 250)
                             ->afterStateHydrated(
-                                fn ($component, $state, $record) => $component->state(json_decode($record?->schema ?? '[]', true))
+                                fn($component, $state, $record) => $component->state(json_decode($record?->schema ?? '[]', true))
                             )
                             ->afterStateUpdated(
-                                fn ($state, callable $set) => $set('schema', json_encode(array_values($state ?? [])))
+                                fn($state, callable $set) => $set('schema', json_encode(array_values($state ?? [])))
                             )
                             ->schema([
                                 Group::make()
@@ -75,9 +76,15 @@ class CollectionConfigResource extends Resource
                                         Select::make('type')
                                             ->label('Tipo')
                                             ->options([
-                                                'text' => 'Texto', 'textarea' => 'Área de Texto', 'select' => 'Seleção',
-                                                'boolean' => 'Booleano', 'number' => 'Número', 'date' => 'Data',
-                                                'datetime' => 'Data e Hora', 'color' => 'Cor', 'json' => 'JSON',
+                                                'text' => 'Texto',
+                                                'textarea' => 'Área de Texto',
+                                                'select' => 'Seleção',
+                                                'boolean' => 'Booleano',
+                                                'number' => 'Número',
+                                                'date' => 'Data',
+                                                'datetime' => 'Data e Hora',
+                                                'color' => 'Cor',
+                                                'json' => 'JSON',
                                             ])
                                             ->required()
                                             ->reactive()
@@ -104,9 +111,8 @@ class CollectionConfigResource extends Resource
                                             ->label('Opções (select)')
                                             ->helperText('valor:Label por linha')
                                             ->rows(3)
-                                            ->visible(fn ($get) => $get('type') === 'select')
-                                            ->columnSpan(5)
-                                            ->live(),
+                                            ->visible(fn($get) => $get('type') === 'select')
+                                            ->columnSpan(5),
                                     ])
                                     ->columns(5),
 
@@ -120,27 +126,29 @@ class CollectionConfigResource extends Resource
 
                                         TextInput::make('default_value')
                                             ->label('Valor Padrão')
-                                            ->visible(fn ($get) => ! in_array($get('type'), ['select', 'boolean']))
+                                            ->visible(fn($get) => ! in_array($get('type'), ['select', 'boolean']))
                                             ->nullable()
                                             ->columnSpan(2),
 
                                         Toggle::make('default_boolean')
                                             ->label('Valor Padrão')
-                                            ->visible(fn ($get) => $get('type') === 'boolean')
+                                            ->visible(fn($get) => $get('type') === 'boolean')
                                             ->columnSpan(2),
 
                                         Select::make('default_select')
                                             ->label('Valor Padrão')
-                                            ->options(fn ($get) => collect(explode("\n", $get('../../options') ?? ''))
-                                                ->mapWithKeys(function ($line) {
-                                                    $line = trim($line);
+                                            ->options(
+                                                fn($get) => collect(explode("\n", $get('options') ?? ''))
+                                                    ->mapWithKeys(function ($line) {
+                                                        $line = trim($line);
 
-                                                    return str_contains($line, ':')
-                                                        ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
-                                                        : [$line => $line];
-                                                })->toArray()
+                                                        return str_contains($line, ':')
+                                                            ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
+                                                            : [$line => $line];
+                                                    })->toArray()
                                             )
-                                            ->visible(fn ($get) => $get('type') === 'select')
+                                            ->visible(fn($get) => $get('type') === 'select')
+
                                             ->columnSpan(2),
 
                                         TextInput::make('hint')
@@ -154,9 +162,9 @@ class CollectionConfigResource extends Resource
 
                         Hidden::make('schema')
                             ->dehydrated(true)
-                            ->live()
-                            ->afterStateHydrated(fn ($component, $state, $record) => $component->state($record?->schema ?? '[]'))
-                            ->dehydrateStateUsing(fn ($get) => json_encode(array_values($get('schema_builder') ?? []))),
+                            ->reactive()
+                            ->afterStateHydrated(fn($component, $state, $record) => $component->state($record?->schema ?? '[]'))
+                            ->dehydrateStateUsing(fn($get) => json_encode(array_values($get('schema_builder') ?? []))),
                     ]),
             ]);
     }
@@ -202,7 +210,9 @@ class CollectionConfigResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            DataRelationManager::class,
+        ];
     }
 
     public static function getWidgets(): array

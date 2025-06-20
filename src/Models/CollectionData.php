@@ -21,7 +21,7 @@ class CollectionData extends Model
     /**
      * Relação inversa com CollectionConfig
      */
-    public function collectionConfig(): BelongsTo
+    public function config(): BelongsTo
     {
         return $this->belongsTo(CollectionConfig::class, 'collection_config_id');
     }

@@ -11,7 +11,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 
-class ListShortUrlVisits extends ManageRelatedRecords
+class ListCollectionConfigsData extends ManageRelatedRecords
 {
     protected static string $resource = ShortUrlResource::class;
 

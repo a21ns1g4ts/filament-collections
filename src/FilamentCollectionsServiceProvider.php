@@ -134,7 +134,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     protected function getRoutes(): array
     {
         return [
-            __DIR__ . '/../routes/web.php',
+            __DIR__ . '/../routes/api.php',
         ];
     }
 

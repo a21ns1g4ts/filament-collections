@@ -56,6 +56,10 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
         if (file_exists($package->basePath('/../resources/views'))) {
             $package->hasViews(static::$viewNamespace);
         }
+
+        if (file_exists($package->basePath('/../routes/web.php'))) {
+            $package->hasRoute('web');
+        }
     }
 
     public function packageRegistered(): void {}
@@ -129,7 +133,9 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
      */
     protected function getRoutes(): array
     {
-        return [];
+        return [
+            __DIR__.'/../routes/web.php',
+        ];
     }
 
     /**

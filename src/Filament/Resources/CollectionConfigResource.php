@@ -7,6 +7,8 @@ use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\P
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\ListCollectionConfigs;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\DataRelationManager;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -43,7 +45,7 @@ class CollectionConfigResource extends Resource
                             ->regex('/^[a-z_]+$/')
                             ->unique(CollectionConfig::class, 'key', ignoreRecord: true)
                             ->columnSpan(2)
-                            ->disabled(fn($operation) => $operation === 'edit'),
+                            ->disabled(fn ($operation) => $operation === 'edit'),
 
                         Textarea::make('description')
                             ->label('Descrição')
@@ -59,16 +61,16 @@ class CollectionConfigResource extends Resource
                         Repeater::make('schema_builder')
                             ->label('Campos')
                             ->addActionLabel('Adicionar Campo')
-                            ->itemLabel(fn($state) => $state['name'] ?? 'Novo Campo')
+                            ->itemLabel(fn ($state) => $state['name'] ?? 'Novo Campo')
                             ->collapsible()
                             ->cloneable()
                             ->reactive()
                             ->orderable()
                             ->afterStateHydrated(
-                                fn($component, $state, $record) => $component->state(json_decode($record?->schema ?? '[]', true))
+                                fn ($component, $state, $record) => $component->state($record?->schema ?? [])
                             )
                             ->afterStateUpdated(
-                                fn($state, callable $set) => $set('schema', json_encode(array_values($state ?? [])))
+                                fn ($state, callable $set) => $set('schema', json_encode(array_values($state ?? [])))
                             )
                             ->schema([
                                 Group::make()
@@ -111,7 +113,7 @@ class CollectionConfigResource extends Resource
                                             ->label('Opções (select)')
                                             ->helperText('valor:Label por linha')
                                             ->rows(3)
-                                            ->visible(fn($get) => $get('type') === 'select')
+                                            ->visible(fn ($get) => $get('type') === 'select')
                                             ->columnSpan(5),
                                     ])
                                     ->columns(5),
@@ -124,21 +126,34 @@ class CollectionConfigResource extends Resource
                                             ->inline(false)
                                             ->columnSpan(1),
 
-                                        TextInput::make('default_value')
+                                        TextInput::make('default')
                                             ->label('Valor Padrão')
-                                            ->visible(fn($get) => ! in_array($get('type'), ['select', 'boolean']))
+                                            ->visible(fn ($get) => ! in_array($get('type'), ['select', 'boolean', 'datetime', 'date']))
                                             ->nullable()
                                             ->columnSpan(2),
 
-                                        Toggle::make('default_boolean')
+                                        DateTimePicker::make('default')
                                             ->label('Valor Padrão')
-                                            ->visible(fn($get) => $get('type') === 'boolean')
+                                            ->visible(fn ($get) => $get('type') === 'datetime')
+                                            ->nullable()
                                             ->columnSpan(2),
 
-                                        Select::make('default_select')
+                                        DatePicker::make('default')
+                                            ->label('Valor Padrão')
+                                            ->visible(fn ($get) => $get('type') === 'date')
+                                            ->nullable()
+                                            ->columnSpan(2),
+
+                                        Toggle::make('default')
+                                            ->label('Valor Padrão')
+                                            ->inline(false)
+                                            ->visible(fn ($get) => $get('type') === 'boolean')
+                                            ->columnSpan(2),
+
+                                        Select::make('default')
                                             ->label('Valor Padrão')
                                             ->options(
-                                                fn($get) => collect(explode("\n", $get('options') ?? ''))
+                                                fn ($get) => collect(explode("\n", $get('options') ?? ''))
                                                     ->mapWithKeys(function ($line) {
                                                         $line = trim($line);
 
@@ -147,7 +162,7 @@ class CollectionConfigResource extends Resource
                                                             : [$line => $line];
                                                     })->toArray()
                                             )
-                                            ->visible(fn($get) => $get('type') === 'select')
+                                            ->visible(fn ($get) => $get('type') === 'select')
 
                                             ->columnSpan(2),
 
@@ -163,8 +178,8 @@ class CollectionConfigResource extends Resource
                         Hidden::make('schema')
                             ->dehydrated(true)
                             ->reactive()
-                            ->afterStateHydrated(fn($component, $state, $record) => $component->state($record?->schema ?? '[]'))
-                            ->dehydrateStateUsing(fn($get) => json_encode(array_values($get('schema_builder') ?? []))),
+                            ->afterStateHydrated(fn ($component, $state, $record) => $component->state($record?->schema ?? '[]'))
+                            ->dehydrateStateUsing(fn ($get) => json_encode(array_values($get('schema_builder') ?? []))),
                     ]),
             ]);
     }

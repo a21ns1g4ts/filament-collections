@@ -2,7 +2,8 @@
 
 namespace A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers;
 
-use Filament\Resources\RelationManagers\HasManyRelationManager;
+use Filament\Forms;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -22,16 +23,67 @@ class DataRelationManager extends RelationManager
 
     public function form(Form $form): Form
     {
+        $schema = $this->ownerRecord->schema;
+
         return $form
             ->schema([
-                // Aqui você monta o form para os dados da coleção.
-                // Como o payload é JSON e dinâmico, você pode mostrar um Textarea simples ou
-                // usar alguma UI customizada para edição do JSON.
-                Forms\Components\Textarea::make('payload')
-                    ->label('Dados da Coleção')
-                    ->rows(10)
-                    ->json() // validação JSON
-                    ->required(),
+                Section::make('Preenchimento dos Campos')
+                    ->description('Complete os dados da coleção conforme o schema configurado.')
+                    ->schema(
+                        collect($schema)->map(function ($field) {
+                            $name = $field['name'] ?? null;
+
+                            if (! $name) {
+                                return null;
+                            }
+
+                            $label = $field['label'] ?? ucfirst($name);
+                            $type = $field['type'] ?? 'text';
+                            $required = $field['required'] ?? false;
+                            $default = $field['default'] ?? null;
+                            $hint = $field['hint'] ?? null;
+
+                            return match ($type) {
+                                'text' => Forms\Components\TextInput::make("payload.{$name}")
+                                    ->label($label)->required($required)->default($default)->helperText($hint),
+
+                                'textarea' => Forms\Components\Textarea::make("payload.{$name}")
+                                    ->label($label)->required($required)->default($default)->helperText($hint),
+
+                                'select' => Forms\Components\Select::make("payload.{$name}")
+                                    ->label($label)
+                                    ->options($field['options'] ?? [])
+                                    ->required($required)
+                                    ->default($default)
+                                    ->helperText($hint),
+
+                                'boolean' => Forms\Components\Toggle::make("payload.{$name}")
+                                    ->label($label)->required($required)->default((bool) $default)->helperText($hint),
+
+                                'number' => Forms\Components\TextInput::make("payload.{$name}")
+                                    ->label($label)->numeric()->required($required)->default($default)->helperText($hint),
+
+                                'date' => Forms\Components\DatePicker::make("payload.{$name}")
+                                    ->label($label)->required($required)->default($default)->helperText($hint),
+
+                                'datetime' => Forms\Components\DateTimePicker::make("payload.{$name}")
+                                    ->label($label)->required($required)->default($default)->helperText($hint),
+
+                                'color' => Forms\Components\ColorPicker::make("payload.{$name}")
+                                    ->label($label)->required($required)->default($default)->helperText($hint),
+
+                                'json' => Forms\Components\Textarea::make("payload.{$name}")
+                                    ->label($label)
+                                    ->required($required)
+                                    ->rows(6)
+                                    ->default(is_array($default) ? json_encode($default, JSON_PRETTY_PRINT) : $default)
+                                    ->helperText($hint),
+
+                                default => Forms\Components\TextInput::make("payload.{$name}")
+                                    ->label($label)->required($required)->default($default)->helperText($hint),
+                            };
+                        })->filter()->values()->all()
+                    ),
             ]);
     }
 

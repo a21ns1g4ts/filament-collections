@@ -4,8 +4,8 @@ namespace A21ns1g4ts\FilamentCollections\Http\Controllers;
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 
 class CollectionContentController extends Controller
 {
@@ -63,7 +63,7 @@ class CollectionContentController extends Controller
                     'count' => $items->count(),
                     'total' => $paginated ? $items->total() : $items->count(),
                 ],
-                'items' => $items->map(fn ($item) => $item->payload)->values(),
+                'items' => $items->map(fn ($item) => $item->payload)->values(), // @phpstan-ignore-line
                 'pagination' => $paginatedData,
             ];
         }

@@ -23,7 +23,7 @@ class DataRelationManager extends RelationManager
 
     public function form(Form $form): Form
     {
-        $schema = $this->ownerRecord->schema;
+        $schema = $this->ownerRecord->schema; // @phpstan-ignore-line
 
         return $form
             ->schema([

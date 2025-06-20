@@ -2,6 +2,8 @@
 
 namespace A21ns1g4ts\FilamentCollections;
 
+use A21ns1g4ts\FilamentCollections\Commands\FilamentCollectionsCommand;
+use A21ns1g4ts\FilamentCollections\Testing\TestsFilamentCollections;
 use Filament\Support\Assets\AlpineComponent;
 use Filament\Support\Assets\Asset;
 use Filament\Support\Assets\Css;
@@ -13,8 +15,6 @@ use Livewire\Features\SupportTesting\Testable;
 use Spatie\LaravelPackageTools\Commands\InstallCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use A21ns1g4ts\FilamentCollections\Commands\FilamentCollectionsCommand;
-use A21ns1g4ts\FilamentCollections\Testing\TestsFilamentCollections;
 
 class FilamentCollectionsServiceProvider extends PackageServiceProvider
 {
@@ -78,7 +78,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
 
         // Handle Stubs
         if (app()->runningInConsole()) {
-            foreach (app(Filesystem::class)->files(__DIR__ . '/../stubs/') as $file) {
+            foreach (app(Filesystem::class)->files(__DIR__.'/../stubs/') as $file) {
                 $this->publishes([
                     $file->getRealPath() => base_path("stubs/filament-collections/{$file->getFilename()}"),
                 ], 'filament-collections-stubs');
@@ -101,8 +101,8 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     {
         return [
             // AlpineComponent::make('filament-collections', __DIR__ . '/../resources/dist/components/filament-collections.js'),
-            Css::make('filament-collections-styles', __DIR__ . '/../resources/dist/filament-collections.css'),
-            Js::make('filament-collections-scripts', __DIR__ . '/../resources/dist/filament-collections.js'),
+            // Css::make('filament-collections-styles', __DIR__ . '/../resources/dist/filament-collections.css'),
+            // Js::make('filament-collections-scripts', __DIR__ . '/../resources/dist/filament-collections.js'),
         ];
     }
 
@@ -146,7 +146,8 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     protected function getMigrations(): array
     {
         return [
-            'create_filament-collections_table',
+            'create_collections_config_table',
+            'create_collections_data_table',
         ];
     }
 }

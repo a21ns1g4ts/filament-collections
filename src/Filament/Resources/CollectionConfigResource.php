@@ -10,7 +10,6 @@ use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Group;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -29,6 +28,10 @@ class CollectionConfigResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-inbox-stack';
 
     protected static ?string $navigationLabel = 'Coleções';
+
+    protected static ?string $modelLabel = 'Coleção';
+
+    protected static ?string $modelLabelPlural = 'Coleções';
 
     public static function form(Form $form): Form
     {
@@ -58,25 +61,26 @@ class CollectionConfigResource extends Resource
                 Section::make('Campos da Coleção')
                     ->description('Configure os campos que farão parte da sua coleção.')
                     ->schema([
-                        Repeater::make('schema_builder')
+                        Repeater::make('schema')
                             ->label('Campos')
                             ->addActionLabel('Adicionar Campo')
                             ->itemLabel(fn ($state) => $state['name'] ?? 'Novo Campo')
                             ->collapsible()
+                            ->collapsed()
                             ->cloneable()
-                            ->reactive()
-                            ->orderable()
-                            ->afterStateHydrated(
-                                fn ($component, $state, $record) => $component->state($record?->schema ?? [])
-                            )
-                            ->afterStateUpdated(
-                                fn ($state, callable $set) => $set('schema', json_encode(array_values($state ?? [])))
-                            )
+                            ->orderColumn()
+                            // ->afterStateHydrated(
+                            //     fn($component, $state, $record) => $component->state($record?->schema ?? [])
+                            // )
+                            // ->afterStateUpdated(
+                            //     fn ($state, callable $set) => $set('schema', json_encode(array_values($state ?? [])))
+                            // )
                             ->schema([
                                 Group::make()
                                     ->schema([
                                         Select::make('type')
                                             ->label('Tipo')
+                                            ->default('text')
                                             ->options([
                                                 'text' => 'Texto',
                                                 'textarea' => 'Área de Texto',
@@ -96,7 +100,6 @@ class CollectionConfigResource extends Resource
                                             ->label('Nome')
                                             ->required()
                                             ->maxLength(50)
-                                            ->regex('/^[a-z_]+$/')
                                             ->columnSpan(2),
 
                                         TextInput::make('label')
@@ -122,35 +125,42 @@ class CollectionConfigResource extends Resource
                                     ->schema([
                                         Toggle::make('required')
                                             ->label('Obrigatório?')
-                                            ->default(false)
+                                            ->default(true)
                                             ->inline(false)
                                             ->columnSpan(1),
 
                                         TextInput::make('default')
-                                            ->label('Valor Padrão')
+                                            ->label('Valor Padrãos')
+                                            ->default(null)
                                             ->visible(fn ($get) => ! in_array($get('type'), ['select', 'boolean', 'datetime', 'date']))
                                             ->nullable()
                                             ->columnSpan(2),
 
                                         DateTimePicker::make('default')
                                             ->label('Valor Padrão')
+                                            ->default(null)
                                             ->visible(fn ($get) => $get('type') === 'datetime')
                                             ->nullable()
                                             ->columnSpan(2),
 
                                         DatePicker::make('default')
                                             ->label('Valor Padrão')
+                                            ->default(null)
                                             ->visible(fn ($get) => $get('type') === 'date')
                                             ->nullable()
                                             ->columnSpan(2),
 
                                         Toggle::make('default')
                                             ->label('Valor Padrão')
+                                            ->default(null)
                                             ->inline(false)
+                                            ->nullable()
+                                            ->dehydrated(false)
                                             ->visible(fn ($get) => $get('type') === 'boolean')
                                             ->columnSpan(2),
 
                                         Select::make('default')
+                                            ->default(null)
                                             ->label('Valor Padrão')
                                             ->options(
                                                 fn ($get) => collect(explode("\n", $get('options') ?? ''))
@@ -174,12 +184,6 @@ class CollectionConfigResource extends Resource
                                     ])
                                     ->columns(7),
                             ]),
-
-                        Hidden::make('schema')
-                            ->dehydrated(true)
-                            ->reactive()
-                            ->afterStateHydrated(fn ($component, $state, $record) => $component->state($record?->schema ?? '[]'))
-                            ->dehydrateStateUsing(fn ($get) => json_encode(array_values($get('schema_builder') ?? []))),
                     ]),
             ]);
     }

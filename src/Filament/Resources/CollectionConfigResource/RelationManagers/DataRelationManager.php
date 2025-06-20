@@ -11,11 +11,11 @@ use Filament\Tables\Table;
 
 class DataRelationManager extends RelationManager
 {
-    protected static ?string $pluralModelLabel = 'Dados da Coleção';
+    protected static ?string $pluralModelLabel = 'Itens da Coleção';
 
-    protected static ?string $title = 'Dados da Coleção';
+    protected static ?string $title = 'Itens';
 
-    protected static ?string $modelLabel = 'Dado da Coleção';
+    protected static ?string $modelLabel = 'Item da Coleção';
 
     protected static string $relationship = 'data';
 
@@ -52,7 +52,17 @@ class DataRelationManager extends RelationManager
 
                                 'select' => Forms\Components\Select::make("payload.{$name}")
                                     ->label($label)
-                                    ->options($field['options'] ?? [])
+                                    // ->options(json_decode($field['value']) ?? [])
+                                    ->options(
+                                        fn ($get) => collect(explode("\n", $field['options'] ?? ''))
+                                            ->mapWithKeys(function ($line) {
+                                                $line = trim($line);
+
+                                                return str_contains($line, ':')
+                                                    ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
+                                                    : [$line => $line];
+                                            })->toArray()
+                                    )
                                     ->required($required)
                                     ->default($default)
                                     ->helperText($hint),

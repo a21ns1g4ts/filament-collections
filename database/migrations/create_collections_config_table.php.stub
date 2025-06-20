@@ -11,9 +11,9 @@ return new class extends Migration
         Schema::create('collections_config', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
-            $table->text('description');
+            $table->text('description')->nullable();
             $table->json('schema');
-            $table->json('ui_schema');
+            $table->json('ui_schema')->nullable();
             $table->timestamps();
         });
     }

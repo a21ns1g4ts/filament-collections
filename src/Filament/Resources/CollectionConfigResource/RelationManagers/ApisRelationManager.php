@@ -21,8 +21,8 @@ class ApisRelationManager extends RelationManager
         return $form->schema([
             Forms\Components\TextInput::make('name')->required()->maxLength(50),
             Forms\Components\Select::make('personal_access_token_id')
+                ->relationship('token', 'name')
                 ->label('Token Sanctum')
-                ->options(\Laravel\Sanctum\PersonalAccessToken::query()->pluck('name', 'id'))
                 ->searchable()
                 ->nullable(),
             Forms\Components\Toggle::make('active')->default(true),

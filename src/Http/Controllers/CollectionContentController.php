@@ -2,12 +2,15 @@
 
 namespace A21ns1g4ts\FilamentCollections\Http\Controllers;
 
+use A21ns1g4ts\FilamentCollections\Models\CollectionApi;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class CollectionContentController extends Controller
 {
@@ -39,7 +42,6 @@ class CollectionContentController extends Controller
                 ->latest();
 
             if ($paginated) {
-                // Obtem todos os resultados e pagina manualmente
                 $allItems = $query->get();
 
                 $paginatedItems = $this->paginateCollection($allItems, $limit, $page);
@@ -80,6 +82,106 @@ class CollectionContentController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    public function store(Request $request)
+    {
+        $key = $request->input('key');
+        $payload = $request->input('payload');
+
+        if (! $key || ! is_array($payload)) {
+            return response()->json(['error' => 'A chave da coleção e o payload são obrigatórios.'], 422);
+        }
+
+        $config = $this->getCollectionConfig($key);
+
+        if (! $config) {
+            return response()->json(['error' => 'Coleção não encontrada.'], 404);
+        }
+
+        $token = $request->user()?->currentAccessToken();
+        $api = CollectionApi::where('personal_access_token_id', $token?->id)
+            ->where('collection_config_id', $config->id)
+            ->first();
+
+        if (! $api || ! $api->active) {
+            return response()->json(['error' => 'Acesso negado.'], 403);
+        }
+
+        $schema = $config->schema ?? [];
+        $rules = [];
+
+        foreach ($schema as $field) {
+            $name = $field['name'];
+            $type = $field['type'] ?? 'text';
+            $required = $field['required'] ?? false;
+            $unique = $field['unique'] ?? false;
+
+            $ruleSet = [];
+
+            if ($required) {
+                $ruleSet[] = 'required';
+            } else {
+                $ruleSet[] = 'nullable';
+            }
+
+            switch ($type) {
+                case 'number':
+                    $ruleSet[] = 'numeric';
+
+                    break;
+                case 'boolean':
+                    $ruleSet[] = 'boolean';
+
+                    break;
+                case 'date':
+                    $ruleSet[] = 'date';
+
+                    break;
+                case 'datetime':
+                    $ruleSet[] = 'date_format:Y-m-d H:i:s';
+
+                    break;
+                case 'json':
+                    $ruleSet[] = 'array';
+
+                    break;
+                default:
+                    $ruleSet[] = 'string';
+
+                    break;
+            }
+
+            if ($unique) {
+                $ruleSet[] = Rule::unique('collection_data', "payload->{$name}")
+                    ->where(
+                        fn ($query) => $query
+                            ->where('collection_config_id', $config->id)
+                            ->where("payload->{$name}", $payload[$name] ?? null)
+                    );
+            }
+
+            $rules["payload.{$name}"] = $ruleSet;
+        }
+
+        $validator = Validator::make($request->all(), [
+            'key' => 'required|string',
+            'payload' => 'required|array',
+        ] + $rules);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $record = CollectionData::create([
+            'collection_config_id' => $config->id,
+            'payload' => $validator->validated()['payload'],
+        ]);
+
+        return response()->json([
+            'message' => 'Registro criado com sucesso.',
+            'data' => $record,
+        ], 201);
     }
 
     private function parsePayload($item, $config): mixed

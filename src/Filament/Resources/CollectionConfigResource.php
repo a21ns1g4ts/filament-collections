@@ -6,6 +6,7 @@ use A21ns1g4ts\FilamentCollections\Filament\Components\ToggleNullable;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\CreateCollectionConfigs;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\EditCollectionConfigs;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\ListCollectionConfigs;
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\ApisRelationManager;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\DataRelationManager;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use Filament\Forms\Components\ColorPicker;
@@ -121,10 +122,16 @@ class CollectionConfigResource extends Resource
                                     ->columnSpan(5),
                             ]),
 
-                            Group::make()->columns(7)->schema([
+                            Group::make()->columns(8)->schema([
                                 Toggle::make('required')
                                     ->label(__('filament-collections::default.fields.required'))
                                     ->default(true)
+                                    ->inline(false)
+                                    ->columnSpan(1),
+
+                                Toggle::make('unique')
+                                    ->label(__('filament-collections::default.fields.unique'))
+                                    ->default(false)
                                     ->inline(false)
                                     ->columnSpan(1),
 
@@ -239,6 +246,7 @@ class CollectionConfigResource extends Resource
     {
         return [
             DataRelationManager::class,
+            ApisRelationManager::class,
         ];
     }
 

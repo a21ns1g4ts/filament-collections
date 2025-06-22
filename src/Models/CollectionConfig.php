@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CollectionConfig extends Model
 {
-    protected $table = 'collections_config';
-
     protected $fillable = [
         'key',
         'description',
@@ -24,5 +22,10 @@ class CollectionConfig extends Model
     public function data(): HasMany
     {
         return $this->hasMany(CollectionData::class, 'collection_config_id');
+    }
+
+    public function apis()
+    {
+        return $this->hasMany(CollectionApi::class);
     }
 }

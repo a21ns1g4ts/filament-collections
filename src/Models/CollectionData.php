@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CollectionData extends Model
 {
-    protected $table = 'collections_data';
-
     protected $fillable = [
         'collection_config_id',
         'payload',
@@ -18,9 +16,6 @@ class CollectionData extends Model
         'payload' => 'array',
     ];
 
-    /**
-     * Relação inversa com CollectionConfig
-     */
     public function config(): BelongsTo
     {
         return $this->belongsTo(CollectionConfig::class, 'collection_config_id');

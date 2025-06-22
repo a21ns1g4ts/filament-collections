@@ -29,6 +29,7 @@ return [
         'options' => 'Opções (select)',
         'options_help' => 'valor:Label por linha',
         'required' => 'Obrigatório?',
+        'unique' => 'Único?',
         'default' => 'Valor Padrão',
         'hint' => 'Ajuda',
         'fields' => 'Campos',

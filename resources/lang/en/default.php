@@ -29,6 +29,7 @@ return [
         'options' => 'Options (select)',
         'options_help' => 'value:Label per line',
         'required' => 'Required?',
+        'unique' => 'Unique?',
         'default' => 'Default Value',
         'hint' => 'Help Text',
         'fields' => 'Fields',

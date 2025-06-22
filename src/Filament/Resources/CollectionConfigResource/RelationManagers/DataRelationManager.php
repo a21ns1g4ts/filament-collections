@@ -29,117 +29,90 @@ class DataRelationManager extends RelationManager
     {
         $schema = $this->ownerRecord->schema; // @phpstan-ignore-line
 
-        return $form
-            ->schema([
-                Section::make('Preenchimento dos Campos')
-                    ->description('Complete os dados da coleção conforme o schema configurado.')
-                    ->schema(
-                        [
-                            Forms\Components\TextInput::make('payload.uuid')
-                                ->default(Str::uuid()->toString())
-                                ->disabled()
-                                ->dehydrated()
-                                ->label('UUID')
-                                ->required(),
-                            ...collect($schema)->map(function ($field) {
-                                $name = $field['name'] ?? null;
+        return $form->schema([
+            Section::make('Preenchimento dos Campos')
+                ->description('Complete os dados da coleção conforme o schema configurado.')
+                ->schema([
+                    Forms\Components\TextInput::make('payload.uuid')
+                        ->default(Str::uuid()->toString())
+                        ->disabled()
+                        ->dehydrated()
+                        ->label('UUID')
+                        ->required(),
 
-                                if (! $name) {
-                                    return null;
+                    ...collect($schema)->map(function ($field) {
+                        $name = $field['name'] ?? null;
+
+                        if (! $name) {
+                            return null;
+                        }
+
+                        $label = $field['label'] ?? ucfirst($name);
+                        $type = $field['type'] ?? 'text';
+                        $required = $field['required'] ?? false;
+                        $default = $field['default'] ?? null;
+                        $hint = $field['hint'] ?? null;
+                        $unique = $field['unique'] ?? false;
+
+                        $component = match ($type) {
+                            'text' => Forms\Components\TextInput::make("payload.{$name}"),
+                            'textarea' => Forms\Components\Textarea::make("payload.{$name}"),
+                            'select' => Forms\Components\Select::make("payload.{$name}")
+                                ->options(fn () => collect(explode("\n", $field['options'] ?? ''))
+                                    ->mapWithKeys(function ($line) {
+                                        $line = trim($line);
+
+                                        return str_contains($line, ':')
+                                            ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
+                                            : [$line => $line];
+                                    })->toArray()),
+                            'boolean' => Forms\Components\Toggle::make("payload.{$name}"),
+                            'number' => Forms\Components\TextInput::make("payload.{$name}")->numeric(),
+                            'date' => Forms\Components\DatePicker::make("payload.{$name}"),
+                            'datetime' => Forms\Components\DateTimePicker::make("payload.{$name}"),
+                            'color' => Forms\Components\ColorPicker::make("payload.{$name}"),
+                            'json' => JsonColumn::make("payload.{$name}")
+                                ->nullable()
+                                ->editorOnly()
+                                ->default(is_array($default) ? json_encode($default, JSON_PRETTY_PRINT) : $default),
+                            default => Forms\Components\TextInput::make("payload.{$name}"),
+                        };
+
+                        $component = $component
+                            ->label($label)
+                            ->required($required)
+                            ->default($default)
+                            ->helperText($hint);
+
+                        if ($unique) {
+                            $component = $component->unique(
+                                table: CollectionData::class,
+                                column: "payload->{$name}",
+                                ignorable: fn ($record) => $record instanceof \A21ns1g4ts\FilamentCollections\Models\CollectionData ? $record : null,
+                                modifyRuleUsing: function (Unique $rule, $record, $component) use ($name) {
+                                    $inputValue = $component->getState();
+                                    $configId = $this->ownerRecord->id;
+                                    $uuid = $record?->payload['uuid'] ?? null;
+
+                                    $rule = $rule->where('collection_config_id', $configId)
+                                        ->where("payload->{$name}", $inputValue);
+
+                                    if ($uuid) {
+                                        $rule = $rule->where('payload->uuid', '!=', $uuid);
+                                    }
+
+                                    return $rule;
                                 }
+                            );
+                        }
 
-                                $label = $field['label'] ?? ucfirst($name);
-                                $type = $field['type'] ?? 'text';
-                                $required = $field['required'] ?? false;
-                                $default = $field['default'] ?? null;
-                                $hint = $field['hint'] ?? null;
-                                $unique = $field['unique'] ?? false;
-
-                                return match ($type) {
-                                    'text' => Forms\Components\TextInput::make("payload.{$name}")
-                                        ->when(
-                                            $unique,
-                                            fn (Forms\Components\TextInput $component) => $component->unique(
-                                                table: CollectionData::class,
-                                                column: "payload->{$name}",
-                                                // ignorable: fn ($record) => $record instanceof \A21ns1g4ts\FilamentCollections\Models\CollectionData ? $record : null,
-                                                modifyRuleUsing: function (Unique $rule, $record, $component) use ($name) {
-                                                    $inputValue = $component->getState();
-                                                    $uuid = $record?->payload['uuid'];
-                                                    $configId = $this->ownerRecord->id;
-
-                                                    if (! $uuid) {
-                                                        return $rule->where("payload->{$name}", $inputValue)
-                                                            ->where('collection_config_id', $configId);
-                                                    }
-
-                                                    return $rule
-                                                        ->where("payload->{$name}", $inputValue)
-                                                        ->where('collection_config_id', $configId)
-                                                        ->where('payload->uuid', '!=', $uuid);
-                                                },
-                                            )
-                                        )
-                                        ->label($label)
-                                        ->required($required)
-                                        ->default($default)
-                                        ->helperText($hint),
-
-                                    'textarea' => Forms\Components\Textarea::make("payload.{$name}")
-                                        ->label($label)->required($required)->default($default)->helperText($hint),
-
-                                    'select' => Forms\Components\Select::make("payload.{$name}")
-                                        ->label($label)
-                                        ->options(
-                                            fn ($get) => collect(explode("\n", $field['options'] ?? ''))
-                                                ->mapWithKeys(function ($line) {
-                                                    $line = trim($line);
-
-                                                    return str_contains($line, ':')
-                                                        ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
-                                                        : [$line => $line];
-                                                })->toArray()
-                                        )
-                                        ->required($required)
-                                        ->default($default)
-                                        ->helperText($hint),
-
-                                    'boolean' => Forms\Components\Toggle::make("payload.{$name}")
-                                        ->label($label)->required($required)->default((bool) $default)->helperText($hint),
-
-                                    'number' => Forms\Components\TextInput::make("payload.{$name}")
-                                        ->label($label)->numeric()->required($required)->default($default)->helperText($hint),
-
-                                    'date' => Forms\Components\DatePicker::make("payload.{$name}")
-                                        ->label($label)->required($required)->default($default)->helperText($hint),
-
-                                    'datetime' => Forms\Components\DateTimePicker::make("payload.{$name}")
-                                        ->label($label)->required($required)->default($default)->helperText($hint),
-
-                                    'color' => Forms\Components\ColorPicker::make("payload.{$name}")
-                                        ->label($label)->required($required)->default($default)->helperText($hint),
-
-                                    'json' => JsonColumn::make("payload.{$name}")
-                                        ->nullable()
-                                        ->editorOnly()
-                                        ->label($label)
-                                        ->required($required)
-                                        ->default(is_array($default) ? json_encode($default, JSON_PRETTY_PRINT) : $default)
-                                        ->helperText($hint),
-
-                                    default => Forms\Components\TextInput::make("payload.{$name}")
-                                        ->label($label)->required($required)->default($default)->helperText($hint),
-                                };
-                            })
-                                ->filter()
-                                ->unshift(
-
-                                )
-                                ->values()
-                                ->all(),
-                        ]
-                    ),
-            ]);
+                        return $component;
+                    })
+                        ->filter()
+                        ->values()
+                        ->all(),
+                ]),
+        ]);
     }
 
     public function table(Table $table): Table

@@ -111,12 +111,14 @@ class CollectionContentController extends Controller
 
         $schema = $config->schema ?? [];
         $rules = [];
+        $attributeNames = [];
 
         foreach ($schema as $field) {
             $name = $field['name'];
             $type = $field['type'] ?? 'text';
             $required = $field['required'] ?? false;
             $unique = $field['unique'] ?? false;
+            $label = $field['label'] ?? $field['name'];
 
             $ruleSet = [];
 
@@ -163,18 +165,20 @@ class CollectionContentController extends Controller
             }
 
             $rules["payload.{$name}"] = $ruleSet;
+            $attributeNames["payload.{$name}"] = $label;
         }
 
         $validator = Validator::make($request->all(), [
             'key' => 'required|string',
             'payload' => 'required|array',
-        ] + $rules);
+        ] + $rules, [], $attributeNames);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         $payload = $validator->validated()['payload'];
+
         $payload['uuid'] = Str::uuid()->toString();
 
         $record = CollectionData::create([

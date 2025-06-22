@@ -98,14 +98,42 @@ class DataRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
+        $schema = $this->ownerRecord->schema; // mesmo schema usado no form
+
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
+                Tables\Columns\TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable(),
+                ...collect($schema)->map(function ($field) {
+                    $name = $field['name'] ?? null;
 
-                Tables\Columns\TextColumn::make('payload')
-                    ->label('Dados')
-                    ->wrap(),
+                    if (! $name) {
+                        return null;
+                    }
 
+                    $label = $field['label'] ?? ucfirst($name);
+                    $type = $field['type'] ?? 'text';
+
+                    return match ($type) {
+                        'boolean' => Tables\Columns\IconColumn::make("payload.{$name}")
+                            ->label($label)
+                            ->boolean(),
+
+                        'date' => Tables\Columns\TextColumn::make("payload.{$name}")
+                            ->label($label)
+                            ->date(),
+
+                        'datetime' => Tables\Columns\TextColumn::make("payload.{$name}")
+                            ->label($label)
+                            ->dateTime(),
+
+                        default => Tables\Columns\TextColumn::make("payload.{$name}")
+                            ->label($label)
+                            ->wrap()
+                            ->limit(50),
+                    };
+                })->filter()->values()->all(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
@@ -119,6 +147,7 @@ class DataRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                //
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),

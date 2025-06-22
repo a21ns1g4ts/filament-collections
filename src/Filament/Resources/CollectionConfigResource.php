@@ -2,11 +2,14 @@
 
 namespace A21ns1g4ts\FilamentCollections\Filament\Resources;
 
+use A21ns1g4ts\FilamentCollections\Filament\Components\ToggleNullable;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\CreateCollectionConfigs;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\EditCollectionConfigs;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\ListCollectionConfigs;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\DataRelationManager;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use ValentinMorice\FilamentJsonColumn\JsonColumn;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Group;
@@ -135,7 +138,30 @@ class CollectionConfigResource extends Resource
                                         TextInput::make('default')
                                             ->label(__('filament-collections::default.fields.default'))
                                             ->default(null)
-                                            ->visible(fn ($get) => ! in_array($get('type'), ['select', 'boolean', 'datetime', 'date']))
+                                            ->visible(fn ($get) => ! in_array($get('type'), ['select', 'json', 'number', 'boolean', 'datetime', 'date', 'color']))
+                                            ->nullable()
+                                            ->columnSpan(2),
+
+                                        ColorPicker::make('default')
+                                            ->label(__('filament-collections::default.fields.default'))
+                                            ->default(null)
+                                            ->visible(fn ($get) => $get('type') === 'color')
+                                            ->nullable()
+                                            ->columnSpan(2),
+
+                                        JsonColumn::make('default')
+                                            ->label(__('filament-collections::default.fields.default'))
+                                            ->default(null)
+                                            ->visible(fn ($get) => $get('type') === 'json')
+                                            ->nullable()
+                                            ->editorOnly()
+                                            ->columnSpanFull(2),
+
+                                        TextInput::make('default')
+                                            ->label(__('filament-collections::default.fields.default'))
+                                            ->default(null)
+                                            ->numeric()
+                                            ->visible(fn ($get) => $get('type') === 'number')
                                             ->nullable()
                                             ->columnSpan(2),
 
@@ -153,12 +179,11 @@ class CollectionConfigResource extends Resource
                                             ->nullable()
                                             ->columnSpan(2),
 
-                                        Toggle::make('default')
+                                        ToggleNullable::make('default')
                                             ->label(__('filament-collections::default.fields.default'))
-                                            ->default(null)
+                                            // ->default(null)
                                             ->inline(false)
                                             ->nullable()
-                                            ->dehydrated(false)
                                             ->visible(fn ($get) => $get('type') === 'boolean')
                                             ->columnSpan(2),
 
@@ -169,6 +194,7 @@ class CollectionConfigResource extends Resource
                                                 fn ($get) => collect(explode("\n", $get('options') ?? ''))
                                                     ->mapWithKeys(function ($line) {
                                                         $line = trim($line);
+
                                                         return str_contains($line, ':')
                                                             ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
                                                             : [$line => $line];

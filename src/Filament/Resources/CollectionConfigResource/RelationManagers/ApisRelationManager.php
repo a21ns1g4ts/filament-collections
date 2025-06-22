@@ -24,6 +24,7 @@ class ApisRelationManager extends RelationManager
                 ->relationship('token', 'name')
                 ->label('Token Sanctum')
                 ->searchable()
+                ->preload()
                 ->nullable(),
             Forms\Components\Toggle::make('active')->default(true),
         ]);

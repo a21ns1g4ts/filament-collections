@@ -3,34 +3,31 @@
 namespace A21ns1g4ts\FilamentCollections\Filament\Resources;
 
 use A21ns1g4ts\FilamentCollections\Filament\Components\ToggleNullable;
-use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\{
-    CreateCollectionConfigs,
-    EditCollectionConfigs,
-    ListCollectionConfigs
-};
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\CreateCollectionConfigs;
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\EditCollectionConfigs;
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\Pages\ListCollectionConfigs;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\DataRelationManager;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
-use ValentinMorice\FilamentJsonColumn\JsonColumn;
-use Filament\Forms\Components\{
-    ColorPicker,
-    DatePicker,
-    DateTimePicker,
-    Group,
-    Repeater,
-    Section,
-    Select,
-    Textarea,
-    TextInput,
-    Toggle
-};
+use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Group;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use ValentinMorice\FilamentJsonColumn\JsonColumn;
 
 class CollectionConfigResource extends Resource
 {
     protected static ?string $model = CollectionConfig::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-inbox-stack';
 
     public static function getNavigationLabel(): string
@@ -182,6 +179,7 @@ class CollectionConfigResource extends Resource
                                     ->options(fn ($get) => collect(explode("\n", $get('options') ?? ''))
                                         ->mapWithKeys(function ($line) {
                                             $line = trim($line);
+
                                             return str_contains($line, ':')
                                                 ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
                                                 : [$line => $line];

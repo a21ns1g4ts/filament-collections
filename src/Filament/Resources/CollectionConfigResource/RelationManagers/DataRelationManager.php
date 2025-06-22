@@ -82,7 +82,7 @@ class DataRelationManager extends RelationManager
                                 'color' => Forms\Components\ColorPicker::make("payload.{$name}")
                                     ->label($label)->required($required)->default($default)->helperText($hint),
 
-                                'json' =>  JsonColumn::make("payload.{$name}")
+                                'json' => JsonColumn::make("payload.{$name}")
                                     ->nullable()
                                     ->editorOnly()
                                     ->label($label)

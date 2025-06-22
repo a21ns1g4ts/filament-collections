@@ -82,7 +82,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
 
         // Handle Stubs
         if (app()->runningInConsole()) {
-            foreach (app(Filesystem::class)->files(__DIR__.'/../stubs/') as $file) {
+            foreach (app(Filesystem::class)->files(__DIR__ . '/../stubs/') as $file) {
                 $this->publishes([
                     $file->getRealPath() => base_path("stubs/filament-collections/{$file->getFilename()}"),
                 ], 'filament-collections-stubs');
@@ -134,7 +134,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     protected function getRoutes(): array
     {
         return [
-            __DIR__.'/../routes/api.php',
+            __DIR__ . '/../routes/api.php',
         ];
     }
 

@@ -52,7 +52,6 @@ class DataRelationManager extends RelationManager
 
                                 'select' => Forms\Components\Select::make("payload.{$name}")
                                     ->label($label)
-                                    // ->options(json_decode($field['value']) ?? [])
                                     ->options(
                                         fn ($get) => collect(explode("\n", $field['options'] ?? ''))
                                             ->mapWithKeys(function ($line) {
@@ -102,21 +101,24 @@ class DataRelationManager extends RelationManager
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
+
+                Tables\Columns\TextColumn::make('payload')
+                    ->label('Dados')
+                    ->wrap(),
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Criado em')
                     ->dateTime('d/m/Y H:i')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Atualizado em')
                     ->dateTime('d/m/Y H:i')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('payload')
-                    ->label('Dados')
-                    ->limit(100)
-                    ->wrap(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // filtros se quiser
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make(),

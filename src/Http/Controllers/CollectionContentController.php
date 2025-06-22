@@ -11,6 +11,7 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class CollectionContentController extends Controller
 {
@@ -173,9 +174,12 @@ class CollectionContentController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        $payload = $validator->validated()['payload'];
+        $payload['uuid'] = Str::uuid()->toString();
+
         $record = CollectionData::create([
             'collection_config_id' => $config->id,
-            'payload' => $validator->validated()['payload'],
+            'payload' => $payload,
         ]);
 
         return response()->json([

@@ -8,6 +8,7 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use ValentinMorice\FilamentJsonColumn\JsonColumn;
 
 class DataRelationManager extends RelationManager
 {
@@ -81,10 +82,11 @@ class DataRelationManager extends RelationManager
                                 'color' => Forms\Components\ColorPicker::make("payload.{$name}")
                                     ->label($label)->required($required)->default($default)->helperText($hint),
 
-                                'json' => Forms\Components\Textarea::make("payload.{$name}")
+                                'json' =>  JsonColumn::make("payload.{$name}")
+                                    ->nullable()
+                                    ->editorOnly()
                                     ->label($label)
                                     ->required($required)
-                                    ->rows(6)
                                     ->default(is_array($default) ? json_encode($default, JSON_PRETTY_PRINT) : $default)
                                     ->helperText($hint),
 

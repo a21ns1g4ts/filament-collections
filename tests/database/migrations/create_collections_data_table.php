@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('collections_data', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('collection_config_id')->constrained('collections_config')->cascadeOnDelete();
+            $table->foreignId('collection_config_id')->constrained('collection_configs')->cascadeOnDelete();
             $table->json('payload');
             $table->timestamps();
         });

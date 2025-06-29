@@ -51,6 +51,7 @@ class CollectionContentController extends Controller
                     'meta' => [
                         'key' => $key,
                         'title' => $config->description ?? $key,
+                        'schema' => $config->schema,
                         'limit' => $limit,
                         'paginated' => true,
                         'count' => $paginatedItems->count(),
@@ -71,6 +72,7 @@ class CollectionContentController extends Controller
                     'meta' => [
                         'key' => $key,
                         'title' => $config->description ?? $key,
+                        'schema' => $config->schema,
                         'limit' => $limit,
                         'paginated' => false,
                         'count' => $items->count(),

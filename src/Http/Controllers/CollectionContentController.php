@@ -18,9 +18,14 @@ class CollectionContentController extends Controller
     public function index(Request $request)
     {
         $collectionsRequest = $request->input('collections', []);
+        $paginateConfigs = filter_var($request->input('paginate_configs', false), FILTER_VALIDATE_BOOLEAN);
+
+        if (empty($collectionsRequest) && $paginateConfigs) {
+            return $this->getPaginatedCollectionConfigs($request);
+        }
 
         if (empty($collectionsRequest)) {
-            return response()->json(['error' => 'Nenhuma coleção informada.'], 400);
+            return response()->json(['error' => 'No collections were provided.'], 400);
         }
 
         $response = [];
@@ -253,5 +258,33 @@ class CollectionContentController extends Controller
             $page,
             ['path' => request()->url(), 'query' => request()->query()]
         );
+    }
+
+    private function getPaginatedCollectionConfigs(Request $request)
+    {
+        $limit = (int) ($request->input('limit', 10));
+        $page = (int) ($request->input('page', 1));
+
+        $configs = CollectionConfig::latest()->paginate($limit, ['*'], 'page', $page);
+
+        return response()->json([
+            'configs' => [
+                'meta' => [
+                    'key' => 'configs',
+                    'title' => 'Configurações de Coleções',
+                    'limit' => $limit,
+                    'paginated' => true,
+                    'count' => $configs->count(),
+                    'total' => $configs->total(),
+                ],
+                'items' => $configs->items(),
+                'pagination' => [
+                    'current_page' => $configs->currentPage(),
+                    'last_page' => $configs->lastPage(),
+                    'per_page' => $configs->perPage(),
+                    'total' => $configs->total(),
+                ],
+            ],
+        ]);
     }
 }

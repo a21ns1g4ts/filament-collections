@@ -129,6 +129,8 @@ class CollectionConfigResource extends Resource
                                     ->options([
                                         'belongsTo' => 'Belongs To',
                                         'belongsToMany' => 'Belongs To Many',
+                                        'hasOne' => 'Has One',
+                                        'hasMany' => 'Has Many',
                                     ])
                                     ->required()
                                     ->visible(fn($get) => $get('type') === 'collection'),
@@ -138,6 +140,25 @@ class CollectionConfigResource extends Resource
                                     ->options(
                                         \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::all()->pluck('key', 'key')->toArray()
                                     )
+                                    ->required()
+                                    ->visible(fn($get) => $get('type') === 'collection'),
+
+                                Select::make('target_collection_title')
+                                    ->label('Target Collection Title')
+                                    ->options(function ($get) {
+                                        $targetCollectionKey = $get('target_collection_key');
+                                        if (!$targetCollectionKey) {
+                                            return [];
+                                        }
+                                        $targetCollectionConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::where('key', $targetCollectionKey)->first();
+                                        if (!$targetCollectionConfig) {
+                                            return [];
+                                        }
+
+                                        return collect($targetCollectionConfig->schema)
+                                            ->pluck('name', 'name')
+                                            ->toArray();
+                                    })
                                     ->required()
                                     ->visible(fn($get) => $get('type') === 'collection'),
                             ])->visible(fn($get) => $get('type') === 'collection'),

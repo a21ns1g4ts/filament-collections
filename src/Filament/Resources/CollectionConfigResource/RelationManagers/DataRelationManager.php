@@ -79,6 +79,7 @@ class DataRelationManager extends RelationManager
                             'collection' => Forms\Components\Select::make("payload.{$name}")
                                 ->options(function () use ($field) {
                                     $targetCollectionKey = $field['target_collection_key'] ?? null;
+                                    $targetCollectionTitle = $field['target_collection_title'] ?? 'uuid';
                                     if (!$targetCollectionKey) {
                                         return [];
                                     }
@@ -88,10 +89,10 @@ class DataRelationManager extends RelationManager
                                     }
                                     return CollectionData::where('collection_config_id', $targetCollectionConfig->id)
                                         ->get()
-                                        ->pluck('payload.uuid', 'payload.uuid')
+                                        ->pluck('payload.'.$targetCollectionTitle, 'payload.uuid')
                                         ->toArray();
                                 })
-                                ->multiple(fn() => ($field['relationship_type'] ?? 'belongsTo') === 'belongsToMany')
+                                ->multiple(fn() => in_array($field['relationship_type'] ?? 'belongsTo', ['belongsToMany', 'hasMany']))
                                 ->searchable(),
                             default => Forms\Components\TextInput::make("payload.{$name}"),
                         };

@@ -30,12 +30,11 @@ class TestCase extends Orchestra
     {
         parent::setUp();
 
+        $this->artisan('migrate', ['--database' => 'testing'])->run();
+
         Factory::guessFactoryNamesUsing(
             fn (string $modelName) => 'A21ns1g4ts\\FilamentCollections\\Database\\Factories\\' . class_basename($modelName) . 'Factory'
         );
-
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
-        $this->artisan('migrate:fresh', ['--drop-views' => true]);
     }
 
     protected function getPackageProviders($app)

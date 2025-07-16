@@ -3,6 +3,7 @@
 namespace A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers;
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
+use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
@@ -75,6 +76,23 @@ class DataRelationManager extends RelationManager
                                 ->nullable()
                                 ->editorOnly()
                                 ->default(is_array($default) ? json_encode($default, JSON_PRETTY_PRINT) : $default),
+                            'collection' => Forms\Components\Select::make("payload.{$name}")
+                                ->options(function () use ($field) {
+                                    $targetCollectionKey = $field['target_collection_key'] ?? null;
+                                    if (!$targetCollectionKey) {
+                                        return [];
+                                    }
+                                    $targetCollectionConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
+                                    if (!$targetCollectionConfig) {
+                                        return [];
+                                    }
+                                    return CollectionData::where('collection_config_id', $targetCollectionConfig->id)
+                                        ->get()
+                                        ->pluck('payload.uuid', 'payload.uuid')
+                                        ->toArray();
+                                })
+                                ->multiple(fn() => ($field['relationship_type'] ?? 'belongsTo') === 'belongsToMany')
+                                ->searchable(),
                             default => Forms\Components\TextInput::make("payload.{$name}"),
                         };
 

@@ -34,7 +34,8 @@ class TestCase extends Orchestra
             fn (string $modelName) => 'A21ns1g4ts\\FilamentCollections\\Database\\Factories\\' . class_basename($modelName) . 'Factory'
         );
 
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->artisan('migrate:fresh', ['--drop-views' => true]);
     }
 
     protected function getPackageProviders($app)
@@ -77,8 +78,6 @@ class TestCase extends Orchestra
             'model' => User::class, // Ou o caminho para o seu modelo de usuário
         ]);
 
-        foreach (\Illuminate\Support\Facades\File::allFiles(__DIR__ . '/../database/migrations') as $migration) {
-            (include $migration->getRealPath())->up();
-        }
+
     }
 }

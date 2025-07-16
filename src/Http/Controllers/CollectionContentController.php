@@ -62,7 +62,11 @@ class CollectionContentController extends Controller
                         'count' => $paginatedItems->count(),
                         'total' => $paginatedItems->total(),
                     ],
-                    'items' => collect($paginatedItems->items())->map(fn ($item) => $this->parsePayload($item, $config))->values(),
+                    'items' => $this->loadRelationships(
+                        collect($paginatedItems->items())->map(fn ($item) => $this->parsePayload($item, $config)),
+                        $config,
+                        array_filter(explode(',', $request->input('relations', '')))
+                    )->values(),
                     'pagination' => [
                         'current_page' => $paginatedItems->currentPage(),
                         'last_page' => $paginatedItems->lastPage(),
@@ -83,7 +87,11 @@ class CollectionContentController extends Controller
                         'count' => $items->count(),
                         'total' => $items->count(),
                     ],
-                    'items' => collect($items)->map(fn ($item) => $this->parsePayload($item, $config))->values(),
+                    'items' => $this->loadRelationships(
+                        collect($items)->map(fn ($item) => $this->parsePayload($item, $config)),
+                        $config,
+                        array_filter(explode(',', $request->input('relations', '')))
+                    )->values(),
                     'pagination' => null,
                 ];
             }
@@ -239,6 +247,63 @@ class CollectionContentController extends Controller
         }
 
         return $item;
+    }
+
+    private function loadRelationships(Collection $items, CollectionConfig $config, array $requestedRelations): Collection
+    {
+        if (empty($requestedRelations) || empty($config->relationships)) {
+            return $items;
+        }
+
+        $definedRelationships = collect($config->relationships);
+
+        foreach ($requestedRelations as $requestedRelationName) {
+            $relation = $definedRelationships->firstWhere('name', $requestedRelationName);
+
+            if (! $relation) {
+                continue; // Requested relation not defined in config
+            }
+
+            $targetCollectionKey = $relation['target_collection_key'];
+            $localField = $relation['local_field'];
+            $foreignField = $relation['foreign_field'] ?? 'uuid';
+            $type = $relation['type'];
+
+            $targetConfig = $this->getCollectionConfig($targetCollectionKey);
+
+            if (! $targetConfig) {
+                continue; // Target collection not found
+            }
+
+            $targetCollectionData = CollectionData::query()
+                ->where('collection_config_id', $targetConfig->id)
+                ->get();
+
+            foreach ($items as $item) {
+                $relatedData = [];
+
+                if ($type === 'one_to_many') {
+                    // Current item's localField contains UUIDs of related items in target collection
+                    $localFieldValues = (array) ($item->payload[$localField] ?? []);
+                    $relatedData = $targetCollectionData->filter(function ($targetItem) use ($localFieldValues, $foreignField) {
+                        return in_array($targetItem->payload[$foreignField] ?? null, $localFieldValues);
+                    })->map(fn ($targetItem) => $this->parsePayload($targetItem, $targetConfig))->values();
+                } elseif ($type === 'many_to_one') {
+                    // Target collection's foreignField contains UUID of current item
+                    $currentUuid = $item->payload['uuid'] ?? null;
+                    $relatedData = $targetCollectionData->first(function ($targetItem) use ($currentUuid, $foreignField) {
+                        return ($targetItem->payload[$foreignField] ?? null) === $currentUuid;
+                    });
+                    if ($relatedData) {
+                        $relatedData = $this->parsePayload($relatedData, $targetConfig);
+                    }
+                }
+
+                $item->payload[$requestedRelationName] = $relatedData;
+            }
+        }
+
+        return $items;
     }
 
     private function getCollectionConfig(string $key): ?CollectionConfig

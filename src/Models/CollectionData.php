@@ -12,6 +12,8 @@ class CollectionData extends Model
     use HasDynamicRelationships;
     use HasFactory;
 
+    protected $table = 'collections_data';
+
     protected $fillable = [
         'collection_config_id',
         'payload',

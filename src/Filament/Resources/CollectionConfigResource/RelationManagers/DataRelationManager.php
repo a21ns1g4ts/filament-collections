@@ -166,6 +166,39 @@ class DataRelationManager extends RelationManager
                             ->label($label)
                             ->dateTime(),
 
+                        'collection' => Tables\Columns\TextColumn::make("payload.{$name}")
+                            ->label($label)
+                            ->formatStateUsing(function ($state) use ($field) {
+                                if (empty($state)) {
+                                    return '';
+                                }
+
+                                $targetCollectionKey = $field['target_collection_key'] ?? null;
+                                $targetCollectionTitle = $field['target_collection_title'] ?? 'uuid';
+
+                                if (! $targetCollectionKey) {
+                                    return is_array($state) ? implode(', ', $state) : $state;
+                                }
+
+                                $targetCollectionConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
+
+                                if (! $targetCollectionConfig) {
+                                    return is_array($state) ? implode(', ', $state) : $state;
+                                }
+
+                                $query = CollectionData::where('collection_config_id', $targetCollectionConfig->id);
+
+                                if (is_array($state)) {
+                                    $items = $query->whereIn('payload->uuid', $state)->get();
+
+                                    return $items->pluck('payload.'.$targetCollectionTitle)->implode(', ');
+                                }
+
+                                $item = $query->where('payload->uuid', $state)->first();
+
+                                return $item?->payload[$targetCollectionTitle] ?? $state;
+                            }),
+
                         default => Tables\Columns\TextColumn::make("payload.{$name}")
                             ->label($label)
                             ->wrap()

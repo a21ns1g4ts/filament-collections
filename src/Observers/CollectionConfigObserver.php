@@ -3,9 +3,14 @@
 namespace A21ns1g4ts\FilamentCollections\Observers;
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use Doctrine\Inflector\InflectorFactory;
 
 class CollectionConfigObserver
 {
+    protected static $inflector;
+
+    protected static $language = 'portuguese';
+
     public function saved(CollectionConfig $collectionConfig)
     {
         $this->syncInverseRelationships($collectionConfig);
@@ -77,7 +82,7 @@ class CollectionConfigObserver
 
         if (! $inverseRelationshipExists) {
             $targetSchema[] = [
-                'name' => $inverseRelationshipName,
+                'name' => self::inflector()->singularize($inverseRelationshipName),
                 'type' => 'collection',
                 'relationship_type' => 'belongsTo',
                 'target_collection_key' => $sourceConfig->key,
@@ -87,5 +92,14 @@ class CollectionConfigObserver
             $targetConfig->schema = $targetSchema;
             $targetConfig->saveQuietly();
         }
+    }
+
+    public static function inflector()
+    {
+        if (is_null(static::$inflector)) {
+            static::$inflector = InflectorFactory::createForLanguage(static::$language)->build();
+        }
+
+        return static::$inflector;
     }
 }

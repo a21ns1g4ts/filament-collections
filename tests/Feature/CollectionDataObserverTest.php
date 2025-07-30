@@ -4,7 +4,6 @@ use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 
 it('removes belongsTo reference when related item is deleted', function () {
-    // Arrange: Create collection configurations
     $authorConfig = CollectionConfig::factory()->create([
         'key' => 'authors',
         'schema' => [
@@ -25,7 +24,8 @@ it('removes belongsTo reference when related item is deleted', function () {
         ],
     ]);
 
-    // Arrange: Create data
+    $authorConfig->refresh();
+
     $authorData = CollectionData::factory()->create([
         'collection_config_id' => $authorConfig->id,
         'payload' => [
@@ -43,16 +43,15 @@ it('removes belongsTo reference when related item is deleted', function () {
         ],
     ]);
 
-    // Act: Delete the author
     $authorData->delete();
 
-    // Assert: Reload post and check if author reference is null
-    dd($postData->fresh()->payload);
-    expect($postData->payload['author'])->toBeNull();
+    $postData->refresh();
+
+    expect($postData->authors)->toBeNull();
+    expect(@$postData->payload['author'])->toBeNull();
 });
 
-it('removes belongsToMany reference when related item is deleted', function () {
-    // Arrange: Create collection configurations
+it('removes hasMany reference when related item is deleted', function () {
     $tagConfig = CollectionConfig::factory()->create([
         'key' => 'tags',
         'schema' => [
@@ -67,13 +66,12 @@ it('removes belongsToMany reference when related item is deleted', function () {
             [
                 'name' => 'tags',
                 'type' => 'collection',
-                'relationship_type' => 'belongsToMany',
+                'relationship_type' => 'hasMany',
                 'target_collection_key' => 'tags',
             ],
         ],
     ]);
 
-    // Arrange: Create data
     $tag1 = CollectionData::factory()->create([
         'collection_config_id' => $tagConfig->id,
         'payload' => ['uuid' => 'tag-uuid-1', 'name' => 'Laravel'],
@@ -93,11 +91,10 @@ it('removes belongsToMany reference when related item is deleted', function () {
         ],
     ]);
 
-    // Act: Delete one of the tags
     $tag1->delete();
 
-    // Assert: Reload post and check if the tag reference is removed from the array
-    dd($postData->fresh()->payload);
+    $postData->refresh();
+
     expect($postData->payload['tags'])->not->toContain('tag-uuid-1');
     expect($postData->payload['tags'])->toContain('tag-uuid-2');
     expect(count($postData->payload['tags']))->toBe(1);

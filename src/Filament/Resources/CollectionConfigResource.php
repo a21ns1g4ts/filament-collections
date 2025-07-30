@@ -148,6 +148,7 @@ class CollectionConfigResource extends Resource
                                         if (!$targetCollectionKey) {
                                             return [];
                                         }
+
                                         $targetCollectionConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::where('key', $targetCollectionKey)->first();
                                         if (!$targetCollectionConfig) {
                                             return [];
@@ -159,7 +160,8 @@ class CollectionConfigResource extends Resource
                                     })
                                     ->required()
                                     ->visible(fn($get) => $get('type') === 'collection'),
-                            ])->visible(fn($get) => $get('type') === 'collection'),
+                            ])
+                            ->visible(fn($get) => $get('type') === 'collection'),
 
                             Group::make()->columns(8)->schema([
                                 Toggle::make('required')

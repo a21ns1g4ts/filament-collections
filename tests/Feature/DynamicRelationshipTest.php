@@ -47,8 +47,6 @@ it('can resolve belongsTo relationships dynamically', function () {
     // Act: Access the dynamic relationship
     $relatedAuthor = $postData->author;
 
-    dd($postData);
-
     // Assert
     expect($relatedAuthor)->toBeInstanceOf(CollectionData::class)
         ->and($relatedAuthor->id)->toBe($authorData->id)

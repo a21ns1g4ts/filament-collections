@@ -2,33 +2,63 @@
 
 namespace A21ns1g4ts\FilamentCollections\Models\Traits;
 
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 
 trait HasDynamicRelationships
 {
-    public function __call($method, $parameters)
+    public function __get($key)
     {
-        $config = $this->relationLoaded('config') ? $this->getRelation('config') : $this->config()->getResults();
+        if (array_key_exists($key, $this->attributes) || array_key_exists($key, $this->relations)) {
+            return parent::__get($key);
+        }
+
+        if (! $this->relationLoaded('config')) {
+            $this->load('config');
+        }
+        $config = $this->getRelation('config');
 
         if ($config && $config->schema) {
             foreach ($config->schema as $field) {
-                if (($field['type'] ?? null) === 'collection' && ($field['name'] ?? null) === $method) {
+                if (($field['type'] ?? null) === 'collection' && ($field['name'] ?? null) === $key) {
                     $relationshipType = $field['relationship_type'] ?? 'belongsTo';
                     $relatedModel = self::class;
-                    $foreignKey = $field['name'];
+                    $targetCollectionKey = $field['target_collection_key'] ?? null;
 
-                    if ($relationshipType === 'belongsTo') {
-                        return $this->belongsTo($relatedModel, $foreignKey, 'payload->uuid');
+                    if (! $targetCollectionKey) {
+                        continue;
                     }
 
-                    if ($relationshipType === 'hasMany') {
-                        return $this->hasMany($relatedModel, $foreignKey, 'payload->uuid');
+                    $targetConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
+
+                    if (! $targetConfig) {
+                        continue;
+                    }
+
+                    if ($relationshipType === 'belongsTo') {
+                        $foreignKeyValue = $this->payload[$field['name']] ?? null;
+                        if (! $foreignKeyValue) {
+                            return null;
+                        }
+
+                        return $relatedModel::where('collection_config_id', $targetConfig->id)
+                            ->where('payload->uuid', $foreignKeyValue)
+                            ->first();
+                    }
+
+                    if ($relationshipType === 'belongsToMany') {
+                        $foreignKeyValues = $this->payload[$field['name']] ?? [];
+                        if (! is_array($foreignKeyValues) || empty($foreignKeyValues)) {
+                            return collect();
+                        }
+
+                        return $relatedModel::where('collection_config_id', $targetConfig->id)
+                            ->whereIn('payload->uuid', $foreignKeyValues)
+                            ->get();
                     }
                 }
             }
         }
 
-        return parent::__call($method, $parameters);
+        return parent::__get($key);
     }
 }

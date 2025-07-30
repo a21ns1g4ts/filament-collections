@@ -1,0 +1,91 @@
+<?php
+
+namespace A21ns1g4ts\FilamentCollections\Observers;
+
+use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+
+class CollectionConfigObserver
+{
+    public function saved(CollectionConfig $collectionConfig)
+    {
+        $this->syncInverseRelationships($collectionConfig);
+    }
+
+    protected function syncInverseRelationships(CollectionConfig $collectionConfig)
+    {
+        $schema = $collectionConfig->schema ?? [];
+
+        foreach ($schema as $field) {
+            if (($field['type'] ?? null) !== 'collection') {
+                continue;
+            }
+
+            $relationshipType = $field['relationship_type'] ?? null;
+            $targetCollectionKey = $field['target_collection_key'] ?? null;
+
+            if (! $relationshipType || ! $targetCollectionKey) {
+                continue;
+            }
+
+            $targetConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
+            if (! $targetConfig) {
+                continue;
+            }
+
+            if ($relationshipType === 'belongsTo') {
+                $this->addHasManyToTarget($collectionConfig, $targetConfig, $field['name']);
+            }
+
+            if ($relationshipType === 'hasMany') {
+                $this->addBelongsToToTarget($collectionConfig, $targetConfig, $field['name']);
+            }
+        }
+    }
+
+    protected function addHasManyToTarget(CollectionConfig $sourceConfig, CollectionConfig $targetConfig, string $foreignKey)
+    {
+        $targetSchema = $targetConfig->schema ?? [];
+        $inverseRelationshipName = str_replace('_id', '', $sourceConfig->key);
+
+        $inverseRelationshipExists = collect($targetSchema)->contains(function ($field) use ($inverseRelationshipName) {
+            return ($field['name'] ?? null) === $inverseRelationshipName && ($field['relationship_type'] ?? null) === 'hasMany';
+        });
+
+
+        if (! $inverseRelationshipExists) {
+            $targetSchema[] = [
+                'name' => $inverseRelationshipName,
+                'type' => 'collection',
+                'relationship_type' => 'hasMany',
+                'target_collection_key' => $sourceConfig->key,
+                'foreign_key_on_target' => $foreignKey,
+            ];
+
+            $targetConfig->schema = $targetSchema;
+            $targetConfig->saveQuietly();
+        }
+    }
+
+    protected function addBelongsToToTarget(CollectionConfig $sourceConfig, CollectionConfig $targetConfig, string $foreignKey)
+    {
+        $targetSchema = $targetConfig->schema ?? [];
+        $inverseRelationshipName = str_replace('_id', '', $sourceConfig->key);
+
+        $inverseRelationshipExists = collect($targetSchema)->contains(function ($field) use ($inverseRelationshipName) {
+            return ($field['name'] ?? null) === $inverseRelationshipName && ($field['relationship_type'] ?? null) === 'belongsTo';
+        });
+
+        if (! $inverseRelationshipExists) {
+            $targetSchema[] = [
+                'name' => $inverseRelationshipName,
+                'type' => 'collection',
+                'relationship_type' => 'belongsTo',
+                'target_collection_key' => $sourceConfig->key,
+                'foreign_key_on_target' => $foreignKey,
+            ];
+
+            $targetConfig->schema = $targetSchema;
+            $targetConfig->saveQuietly();
+        }
+    }
+}

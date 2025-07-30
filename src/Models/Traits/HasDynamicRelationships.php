@@ -45,6 +45,21 @@ trait HasDynamicRelationships
                             ->first();
                     }
 
+                    if ($relationshipType === 'hasMany') {
+                        $foreignKeyOnTarget = $field['foreign_key_on_target'] ?? null;
+                        if (! $foreignKeyOnTarget) {
+                            continue;
+                        }
+                        $uuid = $this->payload['uuid'] ?? null;
+                        if (! $uuid) {
+                            return collect();
+                        }
+
+                        return $relatedModel::where('collection_config_id', $targetConfig->id)
+                            ->where("payload->{$foreignKeyOnTarget}", $uuid)
+                            ->get();
+                    }
+
                     if ($relationshipType === 'belongsToMany') {
                         $foreignKeyValues = $this->payload[$field['name']] ?? [];
                         if (! is_array($foreignKeyValues) || empty($foreignKeyValues)) {

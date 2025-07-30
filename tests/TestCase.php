@@ -23,7 +23,6 @@ use RyanChandler\BladeCaptureDirective\BladeCaptureDirectiveServiceProvider;
 
 class TestCase extends Orchestra
 {
-    use RefreshDatabase;
     use WithWorkbench;
 
     protected function setUp(): void

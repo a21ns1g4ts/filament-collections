@@ -128,8 +128,6 @@ class CollectionConfigResource extends Resource
                                     ->label('Relationship Type')
                                     ->options([
                                         'belongsTo' => 'Belongs To',
-                                        'belongsToMany' => 'Belongs To Many',
-                                        'hasOne' => 'Has One',
                                         'hasMany' => 'Has Many',
                                     ])
                                     ->required()
@@ -272,7 +270,8 @@ class CollectionConfigResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ])
+            ->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array

@@ -3,7 +3,6 @@
 namespace A21ns1g4ts\FilamentCollections\Models\Traits;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 trait HasDynamicRelationships
@@ -23,8 +22,8 @@ trait HasDynamicRelationships
                         return $this->belongsTo($relatedModel, $foreignKey, 'payload->uuid');
                     }
 
-                    if ($relationshipType === 'belongsToMany') {
-                        return $this->belongsToMany($relatedModel, 'collection_data_collection_data', 'collection_data_id', 'related_collection_data_id');
+                    if ($relationshipType === 'hasMany') {
+                        return $this->hasMany($relatedModel, $foreignKey, 'payload->uuid');
                     }
                 }
             }

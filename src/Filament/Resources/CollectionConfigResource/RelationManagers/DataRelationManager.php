@@ -79,7 +79,6 @@ class DataRelationManager extends RelationManager
                             'collection' => Forms\Components\Select::make("payload.{$name}")
                                 ->options(function () use ($field) {
                                     $targetCollectionKey = $field['target_collection_key'] ?? null;
-                                    $targetCollectionTitle = $field['target_collection_title'] ?? 'uuid';
                                     if (!$targetCollectionKey) {
                                         return [];
                                     }
@@ -87,6 +86,7 @@ class DataRelationManager extends RelationManager
                                     if (!$targetCollectionConfig) {
                                         return [];
                                     }
+                                    $targetCollectionTitle = $targetCollectionConfig->title_field ?? 'uuid';
                                     return CollectionData::where('collection_config_id', $targetCollectionConfig->id)
                                         ->get()
                                         ->pluck('payload.'.$targetCollectionTitle, 'payload.uuid')
@@ -174,7 +174,6 @@ class DataRelationManager extends RelationManager
                                 }
 
                                 $targetCollectionKey = $field['target_collection_key'] ?? null;
-                                $targetCollectionTitle = $field['target_collection_title'] ?? 'uuid';
 
                                 if (! $targetCollectionKey) {
                                     return is_array($state) ? implode(', ', $state) : $state;
@@ -185,6 +184,8 @@ class DataRelationManager extends RelationManager
                                 if (! $targetCollectionConfig) {
                                     return is_array($state) ? implode(', ', $state) : $state;
                                 }
+
+                                $targetCollectionTitle = $targetCollectionConfig->title_field ?? 'uuid';
 
                                 $query = CollectionData::where('collection_config_id', $targetCollectionConfig->id);
 

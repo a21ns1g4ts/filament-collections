@@ -68,6 +68,21 @@ class CollectionConfigResource extends Resource
                         ->maxLength(255)
                         ->nullable()
                         ->columnSpan(2),
+
+                    Select::make('title_field')
+                        ->label('Title Field')
+                        ->options(function ($get) {
+                            $schema = $get('schema') ?? [];
+
+                            return collect($schema)
+                                ->filter(fn($field) => $field['name'])
+                                ->where('type', '!==', 'collection')
+                                ->pluck('name', 'name')
+                                ->toArray();
+                        })
+                        ->required()
+                        ->reactive()
+                        ->columnSpan(2),
                 ]),
 
             Section::make(__('filament-collections::default.form.fields_section'))
@@ -138,26 +153,6 @@ class CollectionConfigResource extends Resource
                                     ->options(
                                         \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::all()->pluck('key', 'key')->toArray()
                                     )
-                                    ->required()
-                                    ->visible(fn($get) => $get('type') === 'collection'),
-
-                                Select::make('target_collection_title')
-                                    ->label('Target Collection Title')
-                                    ->options(function ($get) {
-                                        $targetCollectionKey = $get('target_collection_key');
-                                        if (!$targetCollectionKey) {
-                                            return [];
-                                        }
-
-                                        $targetCollectionConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::where('key', $targetCollectionKey)->first();
-                                        if (!$targetCollectionConfig) {
-                                            return [];
-                                        }
-
-                                        return collect($targetCollectionConfig->schema)
-                                            ->pluck('name', 'name')
-                                            ->toArray();
-                                    })
                                     ->required()
                                     ->visible(fn($get) => $get('type') === 'collection'),
                             ])

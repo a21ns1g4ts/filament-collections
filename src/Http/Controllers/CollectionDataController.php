@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
-class CollectionContentController extends Controller
+class CollectionDataController extends Controller
 {
     public function index(Request $request, string $collectionKey)
     {

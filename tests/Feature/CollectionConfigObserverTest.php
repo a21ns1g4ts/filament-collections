@@ -1,6 +1,7 @@
 <?php
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 
 it('it creates inverse relationship if it does not exist', function () {
     $postsConfig = CollectionConfig::factory()->create([
@@ -72,4 +73,54 @@ it('it updates inverse relationship name if it already exists', function () {
     expect($inverseField['inverse_relationship_name'])->toBe('tags');
     // Ensure no new field was created
     expect(count($tagsConfig->schema))->toBe(1);
+});
+
+it('it removes inverse relationship and data when field is deleted', function () {
+    // Arrange
+    $postsConfig = CollectionConfig::factory()->create([
+        'key' => 'posts',
+        'schema' => [
+            [
+                'name' => 'tags',
+                'type' => 'collection',
+                'relationship_type' => 'hasMany',
+                'target_collection_key' => 'tags',
+            ],
+        ],
+    ]);
+
+    $tagsConfig = CollectionConfig::factory()->create([
+        'key' => 'tags',
+        'schema' => [],
+    ]);
+
+    // Trigger the creation of the inverse relationship
+    $postsConfig->save();
+    $tagsConfig->refresh();
+
+    $post = CollectionData::factory()->create([
+        'collection_config_id' => $postsConfig->id,
+        'payload' => ['uuid' => 'post-1', 'tags' => ['tag-1']],
+    ]);
+
+    $tag = CollectionData::factory()->create([
+        'collection_config_id' => $tagsConfig->id,
+        'payload' => ['uuid' => 'tag-1', 'post' => 'post-1'],
+    ]);
+
+    // Act
+    $postsConfig->schema = [];
+    $postsConfig->save();
+
+    // Assert
+    $tagsConfig->refresh();
+    $post->refresh();
+    $tag->refresh();
+
+    // Check if inverse schema is removed
+    expect($tagsConfig->schema)->toBeEmpty();
+
+    // Check if data is cleaned up
+    expect($post->payload)->not->toHaveKey('tags');
+    expect($tag->payload)->not->toHaveKey('post');
 });

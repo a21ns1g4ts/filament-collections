@@ -196,11 +196,10 @@ it('updates inverse hasMany relationship when item is saved', function () {
     expect($tagData->payload['posts'])->toContain('post-uuid-3');
 });
 
-it('updates inverse hasMany relationship when belongsTo item is saved', function () {
+it('updates inverse hasMany relationship when belongsTo is updated', function () {
     $authorConfig = CollectionConfig::factory()->create([
         'key' => 'authors',
         'schema' => [
-            ['name' => 'name', 'type' => 'text'],
             [
                 'name' => 'posts',
                 'type' => 'collection',
@@ -214,7 +213,6 @@ it('updates inverse hasMany relationship when belongsTo item is saved', function
     $postConfig = CollectionConfig::factory()->create([
         'key' => 'posts',
         'schema' => [
-            ['name' => 'title', 'type' => 'text'],
             [
                 'name' => 'author',
                 'type' => 'collection',
@@ -225,29 +223,204 @@ it('updates inverse hasMany relationship when belongsTo item is saved', function
         ],
     ]);
 
-    $authorData = CollectionData::factory()->create([
+    $author1 = CollectionData::factory()->create([
         'collection_config_id' => $authorConfig->id,
-        'payload' => [
-            'uuid' => 'author-uuid-4',
-            'name' => 'Jane Doe',
-            'posts' => [],
-        ],
+        'payload' => ['uuid' => 'author-1', 'posts' => []],
     ]);
 
-    $postData = CollectionData::factory()->create([
+    $author2 = CollectionData::factory()->create([
+        'collection_config_id' => $authorConfig->id,
+        'payload' => ['uuid' => 'author-2', 'posts' => []],
+    ]);
+
+    $post = CollectionData::factory()->create([
         'collection_config_id' => $postConfig->id,
-        'payload' => [
-            'uuid' => 'post-uuid-4',
-            'title' => 'Post by Jane',
+        'payload' => ['uuid' => 'post-1'],
+    ]);
+
+    // Act: Assign post to author1
+    $payload = $post->payload;
+    $payload['author'] = 'author-1';
+    $post->payload = $payload;
+    $post->save();
+
+    // Assert: Check if inverse relationship is updated
+    $author1->refresh();
+    expect($author1->payload['posts'])->toContain('post-1');
+
+    // Act: Re-assign post to author2
+    $payload = $post->payload;
+    $payload['author'] = 'author-2';
+    $post->payload = $payload;
+    $post->save();
+
+    // Assert: Check if old relationship is removed and new one is added
+    $author1->refresh();
+    $author2->refresh();
+    expect($author1->payload['posts'])->toBeEmpty();
+    expect($author2->payload['posts'])->toContain('post-1');
+
+    // Act: Remove assignment from post
+    $payload = $post->payload;
+    $payload['author'] = null;
+    $post->payload = $payload;
+    $post->save();
+
+    // Assert: Check if relationship is removed from author2
+    $author2->refresh();
+    expect($author2->payload['posts'])->toBeEmpty();
+});
+
+it('it updates inverse hasOne relationship when hasOne is updated', function () {
+    // Arrange
+    $userConfig = CollectionConfig::factory()->create([
+        'key' => 'users',
+        'schema' => [
+            [
+                'name' => 'profile',
+                'type' => 'collection',
+                'relationship_type' => 'hasOne',
+                'target_collection_key' => 'profiles',
+                'inverse_relationship_name' => 'user',
+            ],
         ],
     ]);
 
-    $payload = $postData->payload;
-    $payload['author'] = 'author-uuid-4';
-    $postData->payload = $payload;
-    $postData->save();
+    $profileConfig = CollectionConfig::factory()->create([
+        'key' => 'profiles',
+        'schema' => [
+            [
+                'name' => 'user',
+                'type' => 'collection',
+                'relationship_type' => 'hasOne',
+                'target_collection_key' => 'users',
+                'inverse_relationship_name' => 'profile',
+            ],
+        ],
+    ]);
 
-    $authorData->refresh();
+    $user1 = CollectionData::factory()->create([
+        'collection_config_id' => $userConfig->id,
+        'payload' => ['uuid' => 'user-1'],
+    ]);
 
-    expect($authorData->payload['posts'])->toContain('post-uuid-4');
+    $user2 = CollectionData::factory()->create([
+        'collection_config_id' => $userConfig->id,
+        'payload' => ['uuid' => 'user-2'],
+    ]);
+
+    $profile = CollectionData::factory()->create([
+        'collection_config_id' => $profileConfig->id,
+        'payload' => ['uuid' => 'profile-1'],
+    ]);
+
+    // Act: Assign profile to user1
+    $payload = $user1->payload;
+    $payload['profile'] = 'profile-1';
+    $user1->payload = $payload;
+    $user1->save();
+
+    // Assert: Check if inverse relationship is updated
+    $profile->refresh();
+    expect($profile->payload['user'])->toBe('user-1');
+
+    // Act: Re-assign profile to user2
+    $payload = $user1->payload;
+    $payload['profile'] = null;
+    $user1->payload = $payload;
+    $user1->save();
+
+    $payload = $user2->payload;
+    $payload['profile'] = 'profile-1';
+    $user2->payload = $payload;
+    $user2->save();
+
+    // Assert: Check if old relationship is removed and new one is added
+    $profile->refresh();
+    expect($profile->payload['user'])->toBe('user-2');
+
+    // Act: Remove assignment from user2
+    $payload = $user2->payload;
+    $payload['profile'] = null;
+    $user2->payload = $payload;
+    $user2->save();
+
+    // Assert: Check if relationship is removed from profile
+    $profile->refresh();
+    expect($profile->payload)->not->toHaveKey('user');
+});
+
+it('it updates inverse belongsTo relationship when hasMany is updated', function () {
+    // Arrange
+    $authorConfig = CollectionConfig::factory()->create([
+        'key' => 'authors',
+        'schema' => [
+            [
+                'name' => 'posts',
+                'type' => 'collection',
+                'relationship_type' => 'hasMany',
+                'target_collection_key' => 'posts',
+                'inverse_relationship_name' => 'author',
+            ],
+        ],
+    ]);
+
+    $postConfig = CollectionConfig::factory()->create([
+        'key' => 'posts',
+        'schema' => [
+            [
+                'name' => 'author',
+                'type' => 'collection',
+                'relationship_type' => 'belongsTo',
+                'target_collection_key' => 'authors',
+                'inverse_relationship_name' => 'posts',
+            ],
+        ],
+    ]);
+
+    $author = CollectionData::factory()->create([
+        'collection_config_id' => $authorConfig->id,
+        'payload' => ['uuid' => 'author-1', 'posts' => []],
+    ]);
+
+    $post1 = CollectionData::factory()->create([
+        'collection_config_id' => $postConfig->id,
+        'payload' => ['uuid' => 'post-1'],
+    ]);
+
+    $post2 = CollectionData::factory()->create([
+        'collection_config_id' => $postConfig->id,
+        'payload' => ['uuid' => 'post-2'],
+    ]);
+
+    // Act: Assign post1 to author
+    $payload = $author->payload;
+    $payload['posts'] = ['post-1'];
+    $author->payload = $payload;
+    $author->save();
+
+    // Assert: Check if inverse relationship is updated in post1
+    $post1->refresh();
+    expect($post1->payload['author'])->toBe('author-1');
+
+    // Act: Assign post2 to author (add to existing)
+    $payload = $author->payload;
+    $payload['posts'] = ['post-1', 'post-2'];
+    $author->payload = $payload;
+    $author->save();
+
+    // Assert: Check if inverse relationship is updated in post2
+    $post2->refresh();
+    expect($post2->payload['author'])->toBe('author-1');
+
+    // Act: Remove post1 from author
+    $payload = $author->payload;
+    $payload['posts'] = ['post-2'];
+    $author->payload = $payload;
+    $author->save();
+
+    // Assert: Check if inverse relationship is removed from post1
+    $post1->refresh();
+    expect($post1->payload)->not->toHaveKey('author');
+    expect($post2->payload['author'])->toBe('author-1');
 });

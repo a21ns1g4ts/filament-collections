@@ -36,7 +36,7 @@ class CollectionDataObserver
 
             if ($query->exists()) {
                 throw ValidationException::withMessages([
-                    $foreignKeyName => 'This '.Arr::get($field, 'target_collection_key').' is already assigned to another record.',
+                    $foreignKeyName => 'This ' . Arr::get($field, 'target_collection_key') . ' is already assigned to another record.',
                 ]);
             }
         }
@@ -61,13 +61,9 @@ class CollectionDataObserver
             $foreignKeyName = Arr::get($field, 'name');
             $targetCollectionKey = Arr::get($field, 'target_collection_key');
             $inverseRelationshipName = Arr::get($field, 'inverse_relationship_name');
+            $relationshipType = Arr::get($field, 'relationship_type');
             if (empty($foreignKeyName) || empty($targetCollectionKey) || empty($inverseRelationshipName)) {
                 continue;
-            }
-
-            $relatedUuids = Arr::get($collectionData->payload, $foreignKeyName, []);
-            if (!is_array($relatedUuids)) {
-                $relatedUuids = [$relatedUuids];
             }
 
             $targetConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
@@ -75,33 +71,84 @@ class CollectionDataObserver
                 continue;
             }
 
-            CollectionData::where('collection_config_id', $targetConfig->id)
-                ->whereJsonContains("payload->{$inverseRelationshipName}", $uuid)
-                ->whereNotIn('payload->uuid', $relatedUuids)
-                ->each(function (CollectionData $item) use ($inverseRelationshipName, $uuid) {
-                    $payload = $item->payload;
-                    $currentInverseUuids = Arr::get($payload, $inverseRelationshipName, []);
-                    if (is_array($currentInverseUuids)) {
-                        $filteredUuids = array_values(array_filter($currentInverseUuids, fn($currentUuid) => $currentUuid !== $uuid));
-                        Arr::set($payload, $inverseRelationshipName, $filteredUuids);
-                        $item->withoutEvents(fn() => $item->update(['payload' => $payload]));
-                    }
-                });
+            $newRelatedUuids = Arr::wrap(Arr::get($collectionData->payload, $foreignKeyName, []));
+            $originalRelatedUuids = Arr::wrap(Arr::get($collectionData->getOriginal('payload'), $foreignKeyName, []));
 
-            CollectionData::where('collection_config_id', $targetConfig->id)
-                ->whereIn('payload->uuid', $relatedUuids)
-                ->each(function (CollectionData $item) use ($inverseRelationshipName, $uuid) {
-                    $payload = $item->payload;
-                    $currentInverseUuids = Arr::get($payload, $inverseRelationshipName, []);
-                    if (!is_array($currentInverseUuids)) {
-                        $currentInverseUuids = [];
+            $uuidsToDetach = array_diff($originalRelatedUuids, $newRelatedUuids);
+            $uuidsToAttach = array_diff($newRelatedUuids, $originalRelatedUuids);
+
+            // Handle detachments
+            foreach ($uuidsToDetach as $relatedUuid) {
+                $this->detachRelated($targetConfig, $inverseRelationshipName, $uuid, $relatedUuid, $relationshipType);
+            }
+
+            // Handle attachments
+            foreach ($uuidsToAttach as $relatedUuid) {
+                $this->attachRelated($targetConfig, $inverseRelationshipName, $uuid, $relatedUuid, $relationshipType);
+            }
+        }
+    }
+
+    protected function detachRelated(CollectionConfig $targetConfig, string $inverseRelationshipName, string $sourceUuid, string $relatedUuid, string $relationshipType): void
+    {
+        $relatedModel = CollectionData::where('collection_config_id', $targetConfig->id)
+            ->where('payload->uuid', $relatedUuid)
+            ->first();
+
+        if ($relatedModel) {
+            $relatedModel->withoutEvents(function () use ($relatedModel, $inverseRelationshipName, $sourceUuid, $relationshipType) {
+                $payload = $relatedModel->payload;
+                $inverseValue = Arr::get($payload, $inverseRelationshipName);
+
+                if (in_array($relationshipType, ['belongsTo', 'hasOne'])) {
+                    // For belongsTo/hasOne, the inverse is hasMany/hasOne, so remove from array or unset
+                    if (is_array($inverseValue)) {
+                        $inverseValue = array_values(array_filter($inverseValue, fn($id) => $id !== $sourceUuid));
+                        Arr::set($payload, $inverseRelationshipName, $inverseValue);
+                    } else {
+                        // If it's a single value and matches, unset it
+                        if ($inverseValue === $sourceUuid) {
+                            unset($payload[$inverseRelationshipName]);
+                        }
                     }
-                    if (!in_array($uuid, $currentInverseUuids)) {
-                        $currentInverseUuids[] = $uuid;
-                        Arr::set($payload, $inverseRelationshipName, $currentInverseUuids);
-                        $item->withoutEvents(fn() => $item->update(['payload' => $payload]));
+                } elseif ($relationshipType === 'hasMany') {
+                    // For hasMany, the inverse is belongsTo/hasOne, so unset the single value
+                    if ($inverseValue === $sourceUuid) {
+                        unset($payload[$inverseRelationshipName]);
                     }
-                });
+                }
+                $relatedModel->update(['payload' => $payload]);
+            });
+        }
+    }
+
+    protected function attachRelated(CollectionConfig $targetConfig, string $inverseRelationshipName, string $sourceUuid, string $relatedUuid, string $relationshipType): void
+    {
+        $relatedModel = CollectionData::where('collection_config_id', $targetConfig->id)
+            ->where('payload->uuid', $relatedUuid)
+            ->first();
+
+        if ($relatedModel) {
+            $relatedModel->withoutEvents(function () use ($relatedModel, $inverseRelationshipName, $sourceUuid, $relationshipType) {
+                $payload = $relatedModel->payload;
+
+                if (in_array($relationshipType, ['belongsTo', 'hasOne'])) {
+                    // For belongsTo/hasOne, the inverse is hasMany/hasOne, so add to array or set single value
+                    $inverseValue = Arr::get($payload, $inverseRelationshipName);
+                    if (is_array($inverseValue)) {
+                        if (!in_array($sourceUuid, $inverseValue)) {
+                            $inverseValue[] = $sourceUuid;
+                            Arr::set($payload, $inverseRelationshipName, $inverseValue);
+                        }
+                    } else {
+                        Arr::set($payload, $inverseRelationshipName, $sourceUuid);
+                    }
+                } elseif ($relationshipType === 'hasMany') {
+                    // For hasMany, the inverse is belongsTo/hasOne, so set the single value
+                    Arr::set($payload, $inverseRelationshipName, $sourceUuid);
+                }
+                $relatedModel->update(['payload' => $payload]);
+            });
         }
     }
 

@@ -5,9 +5,43 @@ namespace A21ns1g4ts\FilamentCollections\Observers;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\ValidationException;
 
 class CollectionDataObserver
 {
+    public function saving(CollectionData $collectionData): void
+    {
+        if (!$collectionData->relationLoaded('config')) {
+            $collectionData->load('config');
+        }
+
+        foreach ($collectionData->config->schema as $field) {
+            if (Arr::get($field, 'type') !== 'collection' || Arr::get($field, 'relationship_type') !== 'hasOne') {
+                continue;
+            }
+
+            $foreignKeyName = Arr::get($field, 'name');
+            $relatedUuid = Arr::get($collectionData->payload, $foreignKeyName);
+
+            if (empty($relatedUuid)) {
+                continue;
+            }
+
+            $query = CollectionData::where('collection_config_id', $collectionData->collection_config_id)
+                ->where("payload->{$foreignKeyName}", $relatedUuid);
+
+            if ($collectionData->exists) {
+                $query->where('id', '!=', $collectionData->id);
+            }
+
+            if ($query->exists()) {
+                throw ValidationException::withMessages([
+                    $foreignKeyName => 'This '.Arr::get($field, 'target_collection_key').' is already assigned to another record.',
+                ]);
+            }
+        }
+    }
+
     public function saved(CollectionData $collectionData): void
     {
         if (!$collectionData->relationLoaded('config')) {

@@ -178,6 +178,7 @@ class CollectionConfigResource extends Resource
                                     ->options([
                                         'belongsTo' => 'Belongs To',
                                         'hasMany' => 'Has Many',
+                                        'hasOne' => 'Has One',
                                     ])
                                     ->required()
                                     ->visible(fn($get) => $get('type') === 'collection'),

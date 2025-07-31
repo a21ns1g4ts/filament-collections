@@ -99,6 +99,9 @@ class CollectionConfigObserver
             } elseif ($relationshipType === 'hasMany') {
                 $inverseName = $inverseRelationshipName ?? $inflector->singularize($collectionConfig->key);
                 $this->addOrUpdateInverseRelationship($targetConfig, $inverseName, 'belongsTo', $collectionConfig->key, $field['name']);
+            } elseif ($relationshipType === 'hasOne') {
+                $inverseName = $inverseRelationshipName ?? $inflector->singularize($collectionConfig->key);
+                $this->addOrUpdateInverseRelationship($targetConfig, $inverseName, 'hasOne', $collectionConfig->key, $field['name']);
             }
         }
     }

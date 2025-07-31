@@ -2,6 +2,45 @@
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
+use Illuminate\Validation\ValidationException;
+
+it('it prevents assigning a hasOne related item that is already assigned', function () {
+    $userConfig = CollectionConfig::factory()->create([
+        'key' => 'users',
+        'schema' => [
+            [
+                'name' => 'profile',
+                'type' => 'collection',
+                'relationship_type' => 'hasOne',
+                'target_collection_key' => 'profiles',
+            ],
+        ],
+    ]);
+
+    $profileConfig = CollectionConfig::factory()->create([
+        'key' => 'profiles',
+        'schema' => [],
+    ]);
+
+    $profile = CollectionData::factory()->create([
+        'collection_config_id' => $profileConfig->id,
+        'payload' => ['uuid' => 'profile-1'],
+    ]);
+
+    // First user successfully gets the profile
+    $user1 = CollectionData::factory()->create([
+        'collection_config_id' => $userConfig->id,
+        'payload' => ['uuid' => 'user-1', 'profile' => 'profile-1'],
+    ]);
+
+    // Expect exception when second user tries to get the same profile
+    $this->expectException(ValidationException::class);
+
+    CollectionData::factory()->create([
+        'collection_config_id' => $userConfig->id,
+        'payload' => ['uuid' => 'user-2', 'profile' => 'profile-1'],
+    ]);
+});
 
 it('removes belongsTo reference when related item is deleted', function () {
     $authorConfig = CollectionConfig::factory()->create([

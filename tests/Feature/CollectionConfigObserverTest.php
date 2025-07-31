@@ -124,3 +124,35 @@ it('it removes inverse relationship and data when field is deleted', function ()
     expect($post->payload)->not->toHaveKey('tags');
     expect($tag->payload)->not->toHaveKey('post');
 });
+
+it('it creates inverse hasOne relationship', function () {
+    $userConfig = CollectionConfig::factory()->create([
+        'key' => 'users',
+        'schema' => [],
+    ]);
+
+    $profileConfig = CollectionConfig::factory()->create([
+        'key' => 'profiles',
+        'schema' => [],
+    ]);
+
+    $userConfig->schema = [
+        [
+            'name' => 'profile',
+            'type' => 'collection',
+            'relationship_type' => 'hasOne',
+            'target_collection_key' => 'profiles',
+        ],
+    ];
+
+    $userConfig->save();
+
+    $profileConfig->refresh();
+
+    $inverseField = collect($profileConfig->schema)->firstWhere('name', 'user');
+
+    expect($inverseField)->not->toBeNull();
+    expect($inverseField['relationship_type'])->toBe('hasOne');
+    expect($inverseField['target_collection_key'])->toBe('users');
+    expect($inverseField['inverse_relationship_name'])->toBe('profile');
+});

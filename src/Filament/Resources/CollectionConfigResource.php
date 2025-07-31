@@ -24,6 +24,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use ValentinMorice\FilamentJsonColumn\JsonColumn;
+use Closure; // Importar Closure
 
 class CollectionConfigResource extends Resource
 {
@@ -120,13 +121,46 @@ class CollectionConfigResource extends Resource
                                     ->label(__('filament-collections::default.fields.name'))
                                     ->required()
                                     ->maxLength(50)
-                                    ->columnSpan(2),
+                                    ->columnSpan(2)
+                                    // Validação para nome único dentro do repeater
+                                    ->rules([
+                                        fn ($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
+                                            $currentRepeaterItems = $get('../../schema'); // Pega todos os itens do repeater
+                                            $currentFieldUuid = $livewire->currentlyOpenRepeaterItems[$attribute] ?? null; // Obtém o UUID do item atual, se disponível
+
+                                            $count = collect($currentRepeaterItems)
+                                                ->filter(fn($item, $uuid) => ($item['name'] ?? null) === $value && $uuid !== $currentFieldUuid)
+                                                ->count();
+
+                                            if ($count > 1) {
+                                                $fail("O nome '{$value}' já está em uso em outro campo.");
+                                            }
+                                        },
+                                    ]),
 
                                 TextInput::make('label')
                                     ->label(__('filament-collections::default.fields.label'))
                                     ->maxLength(100)
                                     ->nullable()
-                                    ->columnSpan(2),
+                                    ->columnSpan(2)
+                                    // Validação para label único dentro do repeater
+                                    ->rules([
+                                        fn ($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
+                                            if (empty($value)) { // Permite que labels vazias sejam repetidas
+                                                return;
+                                            }
+                                            $currentRepeaterItems = $get('../../schema');
+                                            $currentFieldUuid = $livewire->currentlyOpenRepeaterItems[$attribute] ?? null;
+
+                                            $count = collect($currentRepeaterItems)
+                                                ->filter(fn($item, $uuid) => ($item['label'] ?? null) === $value && $uuid !== $currentFieldUuid)
+                                                ->count();
+
+                                            if ($count > 1) {
+                                                $fail("O rótulo '{$value}' já está em uso em outro campo.");
+                                            }
+                                        },
+                                    ]),
                             ]),
 
                             Group::make()->columns(5)->schema([

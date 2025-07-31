@@ -39,10 +39,8 @@ class CollectionConfigObserver
 
             if ($relationshipType === 'belongsTo') {
                 $this->addHasManyToTarget($collectionConfig, $targetConfig, $field['name']);
-            }
-
-            if ($relationshipType === 'hasMany') {
-                $this->addBelongsToToTarget($collectionConfig, $targetConfig, $field['name']);
+            } elseif ($relationshipType === 'hasMany') {
+                $this->addBelongsToToTarget($collectionConfig, $targetConfig);
             }
         }
     }
@@ -50,12 +48,11 @@ class CollectionConfigObserver
     protected function addHasManyToTarget(CollectionConfig $sourceConfig, CollectionConfig $targetConfig, string $foreignKey)
     {
         $targetSchema = $targetConfig->schema ?? [];
-        $inverseRelationshipName = str_replace('_id', '', $sourceConfig->key);
+        $inverseRelationshipName = $sourceConfig->key;
 
         $inverseRelationshipExists = collect($targetSchema)->contains(function ($field) use ($inverseRelationshipName) {
             return ($field['name'] ?? null) === $inverseRelationshipName && ($field['relationship_type'] ?? null) === 'hasMany';
         });
-
 
         if (! $inverseRelationshipExists) {
             $targetSchema[] = [
@@ -71,22 +68,23 @@ class CollectionConfigObserver
         }
     }
 
-    protected function addBelongsToToTarget(CollectionConfig $sourceConfig, CollectionConfig $targetConfig, string $foreignKey)
+    protected function addBelongsToToTarget(CollectionConfig $sourceConfig, CollectionConfig $targetConfig)
     {
         $targetSchema = $targetConfig->schema ?? [];
-        $inverseRelationshipName = str_replace('_id', '', $sourceConfig->key);
+        $expectedInverseFieldName = self::inflector()->singularize($sourceConfig->key);
 
-        $inverseRelationshipExists = collect($targetSchema)->contains(function ($field) use ($inverseRelationshipName) {
-            return ($field['name'] ?? null) === $inverseRelationshipName && ($field['relationship_type'] ?? null) === 'belongsTo';
+        $inverseRelationshipExists = collect($targetSchema)->contains(function ($field) use ($expectedInverseFieldName) {
+            return ($field['name'] ?? null) === $expectedInverseFieldName && ($field['relationship_type'] ?? null) === 'belongsTo';
         });
+
 
         if (! $inverseRelationshipExists) {
             $targetSchema[] = [
-                'name' => self::inflector()->singularize($inverseRelationshipName),
+                'name' => $expectedInverseFieldName,
                 'type' => 'collection',
                 'relationship_type' => 'belongsTo',
                 'target_collection_key' => $sourceConfig->key,
-                'foreign_key_on_target' => $foreignKey,
+                'foreign_key_on_target' => $expectedInverseFieldName,
             ];
 
             $targetConfig->schema = $targetSchema;

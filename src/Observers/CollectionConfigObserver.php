@@ -4,100 +4,71 @@ namespace A21ns1g4ts\FilamentCollections\Observers;
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use Doctrine\Inflector\InflectorFactory;
+use Doctrine\Inflector\Language;
 
 class CollectionConfigObserver
 {
-    protected static $inflector;
-
-    protected static $language = 'portuguese';
-
-    public function saved(CollectionConfig $collectionConfig)
+    public function saving(CollectionConfig $collectionConfig)
     {
-        $this->syncInverseRelationships($collectionConfig);
+        if ($collectionConfig->isDirty('schema')) {
+            $this->syncInverseRelationships($collectionConfig);
+        }
     }
 
     protected function syncInverseRelationships(CollectionConfig $collectionConfig)
     {
         $schema = $collectionConfig->schema ?? [];
+        $inflector = InflectorFactory::createForLanguage(Language::PORTUGUESE)->build();
 
         foreach ($schema as $field) {
-            if (($field['type'] ?? null) !== 'collection') {
+            if (($field['type'] ?? null) !== 'collection' || empty($field['target_collection_key'])) {
                 continue;
             }
 
-            $relationshipType = $field['relationship_type'] ?? null;
-            $targetCollectionKey = $field['target_collection_key'] ?? null;
-
-            if (! $relationshipType || ! $targetCollectionKey) {
-                continue;
-            }
-
-            $targetConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
+            $targetConfig = CollectionConfig::where('key', $field['target_collection_key'])->first();
             if (! $targetConfig) {
                 continue;
             }
 
+            $relationshipType = $field['relationship_type'] ?? null;
+            $inverseRelationshipName = $field['inverse_relationship_name'] ?? null;
+
             if ($relationshipType === 'belongsTo') {
-                $this->addHasManyToTarget($collectionConfig, $targetConfig, $field['name']);
+                $inverseName = $inverseRelationshipName ?? $collectionConfig->key;
+                $this->addOrUpdateInverseRelationship($targetConfig, $inverseName, 'hasMany', $collectionConfig->key, $field['name']);
             } elseif ($relationshipType === 'hasMany') {
-                $this->addBelongsToToTarget($collectionConfig, $targetConfig);
+                $inverseName = $inverseRelationshipName ?? $inflector->singularize($collectionConfig->key);
+                $this->addOrUpdateInverseRelationship($targetConfig, $inverseName, 'belongsTo', $collectionConfig->key, $field['name']);
             }
         }
     }
 
-    protected function addHasManyToTarget(CollectionConfig $sourceConfig, CollectionConfig $targetConfig, string $foreignKey)
+    protected function addOrUpdateInverseRelationship(CollectionConfig $targetConfig, string $inverseName, string $inverseType, string $sourceKey, string $sourceFieldName)
     {
         $targetSchema = $targetConfig->schema ?? [];
-        $inverseRelationshipName = $sourceConfig->key;
+        $inverseFieldExists = false;
 
-        $inverseRelationshipExists = collect($targetSchema)->contains(function ($field) use ($inverseRelationshipName) {
-            return ($field['name'] ?? null) === $inverseRelationshipName && ($field['relationship_type'] ?? null) === 'hasMany';
-        });
+        foreach ($targetSchema as $key => $targetField) {
+            if (($targetField['name'] ?? null) === $inverseName) {
+                $targetSchema[$key]['inverse_relationship_name'] = $sourceFieldName;
+                $inverseFieldExists = true;
+                break;
+            }
+        }
 
-        if (! $inverseRelationshipExists) {
+        if (! $inverseFieldExists) {
             $targetSchema[] = [
-                'name' => $inverseRelationshipName,
+                'name' => $inverseName,
                 'type' => 'collection',
-                'relationship_type' => 'hasMany',
-                'target_collection_key' => $sourceConfig->key,
-                'foreign_key_on_target' => $foreignKey,
+                'relationship_type' => $inverseType,
+                'target_collection_key' => $sourceKey,
+                'inverse_relationship_name' => $sourceFieldName,
             ];
+        }
 
+        if ($targetConfig->schema !== $targetSchema) {
             $targetConfig->schema = $targetSchema;
             $targetConfig->saveQuietly();
         }
-    }
-
-    protected function addBelongsToToTarget(CollectionConfig $sourceConfig, CollectionConfig $targetConfig)
-    {
-        $targetSchema = $targetConfig->schema ?? [];
-        $expectedInverseFieldName = self::inflector()->singularize($sourceConfig->key);
-
-        $inverseRelationshipExists = collect($targetSchema)->contains(function ($field) use ($expectedInverseFieldName) {
-            return ($field['name'] ?? null) === $expectedInverseFieldName && ($field['relationship_type'] ?? null) === 'belongsTo';
-        });
-
-
-        if (! $inverseRelationshipExists) {
-            $targetSchema[] = [
-                'name' => $expectedInverseFieldName,
-                'type' => 'collection',
-                'relationship_type' => 'belongsTo',
-                'target_collection_key' => $sourceConfig->key,
-                'foreign_key_on_target' => $expectedInverseFieldName,
-            ];
-
-            $targetConfig->schema = $targetSchema;
-            $targetConfig->saveQuietly();
-        }
-    }
-
-    public static function inflector()
-    {
-        if (is_null(static::$inflector)) {
-            static::$inflector = InflectorFactory::createForLanguage(static::$language)->build();
-        }
-
-        return static::$inflector;
     }
 }

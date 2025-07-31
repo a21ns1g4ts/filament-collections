@@ -99,3 +99,116 @@ it('removes hasMany reference when related item is deleted', function () {
     expect($postData->payload['tags'])->toContain('tag-uuid-2');
     expect(count($postData->payload['tags']))->toBe(1);
 });
+
+it('updates inverse hasMany relationship when item is saved', function () {
+    $postConfig = CollectionConfig::factory()->create([
+        'key' => 'posts',
+        'schema' => [
+            ['name' => 'title', 'type' => 'text'],
+            [
+                'name' => 'tags',
+                'type' => 'collection',
+                'relationship_type' => 'hasMany',
+                'target_collection_key' => 'tags',
+                'inverse_relationship_name' => 'posts',
+            ],
+        ],
+    ]);
+
+    $tagConfig = CollectionConfig::factory()->create([
+        'key' => 'tags',
+        'schema' => [
+            ['name' => 'name', 'type' => 'text'],
+            [
+                'name' => 'posts',
+                'type' => 'collection',
+                'relationship_type' => 'hasMany',
+                'target_collection_key' => 'posts',
+                'inverse_relationship_name' => 'tags',
+            ],
+        ],
+    ]);
+
+    $postData = CollectionData::factory()->create([
+        'collection_config_id' => $postConfig->id,
+        'payload' => [
+            'uuid' => 'post-uuid-3',
+            'title' => 'Post about tags',
+            'tags' => [],
+        ],
+    ]);
+
+    $tagData = CollectionData::factory()->create([
+        'collection_config_id' => $tagConfig->id,
+        'payload' => [
+            'uuid' => 'tag-uuid-3',
+            'name' => 'Relationships',
+            'posts' => [],
+        ],
+    ]);
+
+    $payload = $postData->payload;
+    $payload['tags'] = ['tag-uuid-3'];
+    $postData->payload = $payload;
+    $postData->save();
+
+    $tagData->refresh();
+
+    expect($tagData->payload['posts'])->toContain('post-uuid-3');
+});
+
+it('updates inverse hasMany relationship when belongsTo item is saved', function () {
+    $authorConfig = CollectionConfig::factory()->create([
+        'key' => 'authors',
+        'schema' => [
+            ['name' => 'name', 'type' => 'text'],
+            [
+                'name' => 'posts',
+                'type' => 'collection',
+                'relationship_type' => 'hasMany',
+                'target_collection_key' => 'posts',
+                'inverse_relationship_name' => 'author',
+            ],
+        ],
+    ]);
+
+    $postConfig = CollectionConfig::factory()->create([
+        'key' => 'posts',
+        'schema' => [
+            ['name' => 'title', 'type' => 'text'],
+            [
+                'name' => 'author',
+                'type' => 'collection',
+                'relationship_type' => 'belongsTo',
+                'target_collection_key' => 'authors',
+                'inverse_relationship_name' => 'posts',
+            ],
+        ],
+    ]);
+
+    $authorData = CollectionData::factory()->create([
+        'collection_config_id' => $authorConfig->id,
+        'payload' => [
+            'uuid' => 'author-uuid-4',
+            'name' => 'Jane Doe',
+            'posts' => [],
+        ],
+    ]);
+
+    $postData = CollectionData::factory()->create([
+        'collection_config_id' => $postConfig->id,
+        'payload' => [
+            'uuid' => 'post-uuid-4',
+            'title' => 'Post by Jane',
+        ],
+    ]);
+
+    $payload = $postData->payload;
+    $payload['author'] = 'author-uuid-4';
+    $postData->payload = $payload;
+    $postData->save();
+
+    $authorData->refresh();
+
+    expect($authorData->payload['posts'])->toContain('post-uuid-4');
+});

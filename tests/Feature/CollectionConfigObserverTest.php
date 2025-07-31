@@ -2,37 +2,74 @@
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 
-it('automatically adds hasMany inverse relationship when belongsTo is defined', function () {
-    // Arrange: Create author config
-    $authorConfig = CollectionConfig::factory()->create([
-        'key' => 'authors',
-        'schema' => [
-            ['name' => 'name', 'type' => 'text'],
-        ],
+it('it creates inverse relationship if it does not exist', function () {
+    $postsConfig = CollectionConfig::factory()->create([
+        'key' => 'posts',
+        'schema' => [],
     ]);
 
-    // Act: Create post config with belongsTo relationship to authors
-    $postConfig = CollectionConfig::factory()->create([
+    $tagsConfig = CollectionConfig::factory()->create([
+        'key' => 'tags',
+        'schema' => [],
+    ]);
+
+    $postsConfig->schema = [
+        [
+            'name' => 'tags',
+            'type' => 'collection',
+            'relationship_type' => 'hasMany',
+            'target_collection_key' => 'tags',
+        ],
+    ];
+
+    $postsConfig->save();
+
+    $tagsConfig->refresh();
+
+    $inverseField = collect($tagsConfig->schema)->firstWhere('name', 'post');
+
+    expect($inverseField)->not->toBeNull();
+    expect($inverseField['relationship_type'])->toBe('belongsTo');
+    expect($inverseField['target_collection_key'])->toBe('posts');
+    expect($inverseField['inverse_relationship_name'])->toBe('tags');
+});
+
+it('it updates inverse relationship name if it already exists', function () {
+    $postsConfig = CollectionConfig::factory()->create([
         'key' => 'posts',
+        'schema' => [],
+    ]);
+
+    $tagsConfig = CollectionConfig::factory()->create([
+        'key' => 'tags',
         'schema' => [
-            ['name' => 'title', 'type' => 'text'],
             [
-                'name' => 'author',
+                'name' => 'posts_relation',
                 'type' => 'collection',
                 'relationship_type' => 'belongsTo',
-                'target_collection_key' => 'authors',
+                'target_collection_key' => 'posts',
             ],
         ],
     ]);
 
-    // Assert: Reload author config and check for the new hasMany relationship
-    $authorConfig->refresh();
+    $postsConfig->schema = [
+        [
+            'name' => 'tags',
+            'type' => 'collection',
+            'relationship_type' => 'hasMany',
+            'target_collection_key' => 'tags',
+            'inverse_relationship_name' => 'posts_relation',
+        ],
+    ];
 
-    $hasManyRelationship = collect($authorConfig->schema)->first(function ($field) {
-        return ($field['name'] ?? null) === 'posts' && ($field['relationship_type'] ?? null) === 'hasMany';
-    });
+    $postsConfig->save();
 
-    expect($hasManyRelationship)->not->toBeNull();
-    expect($hasManyRelationship['target_collection_key'])->toBe('posts');
-    expect($hasManyRelationship['foreign_key_on_target'])->toBe('author');
+    $tagsConfig->refresh();
+
+    $inverseField = collect($tagsConfig->schema)->firstWhere('name', 'posts_relation');
+
+    expect($inverseField)->not->toBeNull();
+    expect($inverseField['inverse_relationship_name'])->toBe('tags');
+    // Ensure no new field was created
+    expect(count($tagsConfig->schema))->toBe(1);
 });

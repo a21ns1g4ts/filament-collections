@@ -2,198 +2,56 @@
 
 namespace A21ns1g4ts\FilamentCollections\Http\Controllers;
 
-use A21ns1g4ts\FilamentCollections\Models\CollectionApi;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class CollectionContentController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, string $collectionKey)
     {
-        $collectionsRequest = $request->input('collections', []);
-        $paginateConfigs = filter_var($request->input('paginate_configs', false), FILTER_VALIDATE_BOOLEAN);
-
-        if (empty($collectionsRequest) && $paginateConfigs) {
-            return $this->getPaginatedCollectionConfigs($request);
-        }
-
-        if (empty($collectionsRequest)) {
-            return response()->json(['error' => 'No collections were provided.'], 400);
-        }
-
-        $response = [];
-
-        foreach ($collectionsRequest as $key => $options) {
-            $config = $this->getCollectionConfig($key);
-
-            if (! $config) {
-                $response[$key] = ['error' => 'Coleção não encontrada.'];
-
-                continue;
-            }
-
-            $limit = (int) ($options['limit'] ?? 10);
-            $paginated = filter_var($options['paginated'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $page = (int) ($options['page'] ?? 1);
-
-            $query = CollectionData::query()
-                ->where('collection_config_id', $config->id)
-                ->latest();
-
-            if ($paginated) {
-                $allItems = $query->get();
-
-                $paginatedItems = $this->paginateCollection($allItems, $limit, $page);
-
-                $response[$key] = [
-                    'meta' => [
-                        'key' => $key,
-                        'title' => $config->description ?? $key,
-                        'schema' => $config->schema,
-                        'limit' => $limit,
-                        'paginated' => true,
-                        'count' => $paginatedItems->count(),
-                        'total' => $paginatedItems->total(),
-                    ],
-                    'items' => $this->loadRelationships(
-                        collect($paginatedItems->items())->map(fn ($item) => $this->parsePayload($item, $config)),
-                        $config,
-                        array_filter(explode(',', $request->input('relations', '')))
-                    )->values(),
-                    'pagination' => [
-                        'current_page' => $paginatedItems->currentPage(),
-                        'last_page' => $paginatedItems->lastPage(),
-                        'per_page' => $paginatedItems->perPage(),
-                        'total' => $paginatedItems->total(),
-                    ],
-                ];
-            } else {
-                $items = $query->take($limit)->get();
-
-                $response[$key] = [
-                    'meta' => [
-                        'key' => $key,
-                        'title' => $config->description ?? $key,
-                        'schema' => $config->schema,
-                        'limit' => $limit,
-                        'paginated' => false,
-                        'count' => $items->count(),
-                        'total' => $items->count(),
-                    ],
-                    'items' => $this->loadRelationships(
-                        collect($items)->map(fn ($item) => $this->parsePayload($item, $config)),
-                        $config,
-                        array_filter(explode(',', $request->input('relations', '')))
-                    )->values(),
-                    'pagination' => null,
-                ];
-            }
-        }
-
-        return response()->json($response);
-    }
-
-    public function store(Request $request)
-    {
-        $key = $request->input('key');
-        $payload = $request->input('payload');
-
-        if (! $key || ! is_array($payload)) {
-            return response()->json(['error' => 'A chave da coleção e o payload são obrigatórios.'], 422);
-        }
-
-        $config = $this->getCollectionConfig($key);
+        $config = CollectionConfig::where('key', $collectionKey)->first();
 
         if (! $config) {
-            return response()->json(['error' => 'Coleção não encontrada.'], 404);
+            return response()->json(['error' => 'Collection not found.'], 404);
         }
 
-        $token = $request->user()?->currentAccessToken();
-        $api = CollectionApi::where('personal_access_token_id', $token?->id)
-            ->where('collection_config_id', $config->id)
-            ->first();
+        $query = CollectionData::where('collection_config_id', $config->id);
 
-        if (! $api || ! $api->active) {
-            return response()->json(['error' => 'Acesso negado.'], 403);
+        if ($request->has('filters')) {
+            foreach ($request->input('filters') as $field => $value) {
+                $query->where("payload->{$field}", $value);
+            }
         }
 
-        $schema = $config->schema ?? [];
-        $rules = [];
-        $attributeNames = [];
-
-        foreach ($schema as $field) {
-            $name = $field['name'];
-            $type = $field['type'] ?? 'text';
-            $required = $field['required'] ?? false;
-            $unique = $field['unique'] ?? false;
-            $label = $field['label'] ?? $field['name'];
-
-            $ruleSet = [];
-
-            if ($required) {
-                $ruleSet[] = 'required';
-            } else {
-                $ruleSet[] = 'nullable';
+        if ($request->has('search')) {
+            foreach ($request->input('search') as $field => $value) {
+                $query->where("payload->{$field}", 'like', "%{$value}%");
             }
-
-            switch ($type) {
-                case 'number':
-                    $ruleSet[] = 'numeric';
-
-                    break;
-                case 'boolean':
-                    $ruleSet[] = 'boolean';
-
-                    break;
-                case 'date':
-                    $ruleSet[] = 'date';
-
-                    break;
-                case 'datetime':
-                    $ruleSet[] = 'date_format:Y-m-d H:i:s';
-
-                    break;
-                case 'json':
-                    $ruleSet[] = 'array';
-
-                    break;
-                default:
-                    $ruleSet[] = 'string';
-
-                    break;
-            }
-
-            if ($unique) {
-                $ruleSet[] = Rule::unique('collection_data', "payload->{$name}")
-                    ->where(
-                        fn ($query) => $query
-                            ->where('collection_config_id', $config->id)
-                            ->where("payload->{$name}", $payload[$name] ?? null)
-                    );
-            }
-
-            $rules["payload.{$name}"] = $ruleSet;
-            $attributeNames["payload.{$name}"] = $label;
         }
 
-        $validator = Validator::make($request->all(), [
-            'key' => 'required|string',
-            'payload' => 'required|array',
-        ] + $rules, [], $attributeNames);
+        return response()->json($query->paginate());
+    }
+
+    public function store(Request $request, string $collectionKey)
+    {
+        $config = CollectionConfig::where('key', $collectionKey)->first();
+
+        if (! $config) {
+            return response()->json(['error' => 'Collection not found.'], 404);
+        }
+
+        $validator = Validator::make($request->all(), $this->getValidationRules($config));
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         $payload = $validator->validated()['payload'];
-
         $payload['uuid'] = Str::uuid()->toString();
 
         $record = CollectionData::create([
@@ -201,155 +59,128 @@ class CollectionContentController extends Controller
             'payload' => $payload,
         ]);
 
-        return response()->json([
-            'message' => 'Registro criado com sucesso.',
-            'data' => $record,
-        ], 201);
+        return response()->json($record, 201);
     }
 
-    private function parsePayload($item, $config): mixed
+    public function show(string $collectionKey, string $id)
     {
-        $schema = $config->schema;
+        $record = $this->findRecord($collectionKey, $id);
 
-        if (! is_array($schema)) {
-            return $item;
+        if (! $record) {
+            return response()->json(['error' => 'Record not found.'], 404);
         }
 
-        $jsonFields = collect($schema)
-            ->where('type', '=', 'json')
-            ->pluck('name')
-            ->toArray();
+        return response()->json($record);
+    }
 
-        $item = $item->toArray();
+    public function update(Request $request, string $collectionKey, string $id)
+    {
+        $record = $this->findRecord($collectionKey, $id);
 
-        foreach ($jsonFields as $field) {
-            $raw = $item['payload'][$field] ?? null;
+        if (! $record) {
+            return response()->json(['error' => 'Record not found.'], 404);
+        }
 
-            if (is_array($raw)) {
-                continue;
-            }
+        $config = $record->config;
+        $validator = Validator::make($request->all(), $this->getValidationRules($config, $record->id));
 
-            if (is_string($raw)) {
-                $cleaned = trim($raw);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
-                if (str_starts_with($cleaned, "['") || str_starts_with($cleaned, "['")) {
-                    $cleaned = str_replace("'", '"', $cleaned);
+        $payload = $validator->validated()['payload'];
+        $currentPayload = $record->payload;
+
+        foreach ($payload as $key => $value) {
+            $currentPayload[$key] = $value;
+        }
+
+        $currentPayload['uuid'] = $record->payload['uuid'];
+
+        $record->payload = $currentPayload;
+        $record->save();
+
+        return response()->json($record);
+    }
+
+    public function destroy(string $collectionKey, string $id)
+    {
+        $record = $this->findRecord($collectionKey, $id);
+
+        if (! $record) {
+            return response()->json(['error' => 'Record not found.'], 404);
+        }
+
+        $record->delete();
+
+        return response()->json(null, 204);
+    }
+
+    protected function findRecord(string $collectionKey, string $id): ?CollectionData
+    {
+        $config = CollectionConfig::where('key', $collectionKey)->first();
+
+        if (! $config) {
+            return null;
+        }
+
+        return CollectionData::where('collection_config_id', $config->id)
+            ->where("payload->uuid", $id)
+            ->first();
+    }
+
+    protected function getValidationRules(CollectionConfig $config, ?int $recordId = null): array
+    {
+        $rules = ['payload' => ['required', 'array']];
+
+        if (is_array($config->schema) && isset($config->schema['properties'])) {
+            foreach ($config->schema['properties'] as $fieldName => $field) {
+                if ($fieldName === 'uuid') {
+                    continue;
                 }
 
-                $cleaned = preg_replace('/[^\x09\x0A\x0D\x20-\x7E]/', '', $cleaned);
+                $fullFieldName = "payload.{$fieldName}";
+                $fieldRules = [];
 
-                $decoded = json_decode($cleaned, true);
-            } else {
-                $decoded = null;
-            }
+                if (isset($field['required']) && $field['required']) {
+                    $fieldRules[] = ($recordId === null) ? 'required' : 'sometimes';
+                } else {
+                    $fieldRules[] = 'nullable';
+                }
 
-            $item['payload'][$field] = is_array($decoded) ? $decoded : [];
-        }
-
-        return $item;
-    }
-
-    private function loadRelationships(Collection $items, CollectionConfig $config, array $requestedRelations): Collection
-    {
-        if (empty($requestedRelations) || empty($config->relationships)) {
-            return $items;
-        }
-
-        $definedRelationships = collect($config->relationships);
-
-        foreach ($requestedRelations as $requestedRelationName) {
-            $relation = $definedRelationships->firstWhere('name', $requestedRelationName);
-
-            if (! $relation) {
-                continue; // Requested relation not defined in config
-            }
-
-            $targetCollectionKey = $relation['target_collection_key'];
-            $localField = $relation['local_field'];
-            $foreignField = $relation['foreign_field'] ?? 'uuid';
-            $type = $relation['type'];
-
-            $targetConfig = $this->getCollectionConfig($targetCollectionKey);
-
-            if (! $targetConfig) {
-                continue; // Target collection not found
-            }
-
-            $targetCollectionData = CollectionData::query()
-                ->where('collection_config_id', $targetConfig->id)
-                ->get();
-
-            foreach ($items as $item) {
-                $relatedData = [];
-
-                if ($type === 'one_to_many') {
-                    // Current item's localField contains UUIDs of related items in target collection
-                    $localFieldValues = (array) ($item->payload[$localField] ?? []);
-                    $relatedData = $targetCollectionData->filter(function ($targetItem) use ($localFieldValues, $foreignField) {
-                        return in_array($targetItem->payload[$foreignField] ?? null, $localFieldValues);
-                    })->map(fn ($targetItem) => $this->parsePayload($targetItem, $targetConfig))->values();
-                } elseif ($type === 'many_to_one') {
-                    // Target collection's foreignField contains UUID of current item
-                    $currentUuid = $item->payload['uuid'] ?? null;
-                    $relatedData = $targetCollectionData->first(function ($targetItem) use ($currentUuid, $foreignField) {
-                        return ($targetItem->payload[$foreignField] ?? null) === $currentUuid;
-                    });
-                    if ($relatedData) {
-                        $relatedData = $this->parsePayload($relatedData, $targetConfig);
+                if (isset($field['unique']) && $field['unique']) {
+                    $uniqueRule = Rule::unique('collection_data', "payload->{$fieldName}");
+                    if ($recordId) {
+                        $uniqueRule->ignore($recordId);
                     }
+                    $fieldRules[] = $uniqueRule;
                 }
 
-                $item->payload[$requestedRelationName] = $relatedData;
+                switch ($field['type']) {
+                    case 'number':
+                        $fieldRules[] = 'numeric';
+                        break;
+                    case 'boolean':
+                        $fieldRules[] = 'boolean';
+                        break;
+                    case 'date':
+                        $fieldRules[] = 'date';
+                        break;
+                    case 'datetime':
+                        $fieldRules[] = 'date_format:Y-m-d H:i:s';
+                        break;
+                    case 'json':
+                        $fieldRules[] = 'array';
+                        break;
+                    default:
+                        $fieldRules[] = 'string';
+                        break;
+                }
+
+                $rules[$fullFieldName] = $fieldRules;
             }
         }
 
-        return $items;
-    }
-
-    private function getCollectionConfig(string $key): ?CollectionConfig
-    {
-        return CollectionConfig::query()->where('key', $key)->first();
-    }
-
-    private function paginateCollection(Collection $collection, int $perPage, int $page): LengthAwarePaginator
-    {
-        $offset = ($page - 1) * $perPage;
-        $items = $collection->slice($offset, $perPage)->values();
-
-        return new LengthAwarePaginator(
-            $items,
-            $collection->count(),
-            $perPage,
-            $page,
-            ['path' => request()->url(), 'query' => request()->query()]
-        );
-    }
-
-    private function getPaginatedCollectionConfigs(Request $request)
-    {
-        $limit = (int) ($request->input('limit', 10));
-        $page = (int) ($request->input('page', 1));
-
-        $configs = CollectionConfig::latest()->paginate($limit, ['*'], 'page', $page);
-
-        return response()->json([
-            'configs' => [
-                'meta' => [
-                    'key' => 'configs',
-                    'title' => 'Configurações de Coleções',
-                    'limit' => $limit,
-                    'paginated' => true,
-                    'count' => $configs->count(),
-                    'total' => $configs->total(),
-                ],
-                'items' => $configs->items(),
-                'pagination' => [
-                    'current_page' => $configs->currentPage(),
-                    'last_page' => $configs->lastPage(),
-                    'per_page' => $configs->perPage(),
-                    'total' => $configs->total(),
-                ],
-            ],
-        ]);
+        return $rules;
     }
 }

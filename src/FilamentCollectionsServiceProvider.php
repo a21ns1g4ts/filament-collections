@@ -3,6 +3,10 @@
 namespace A21ns1g4ts\FilamentCollections;
 
 use A21ns1g4ts\FilamentCollections\Commands\FilamentCollectionsCommand;
+use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use A21ns1g4ts\FilamentCollections\Models\CollectionData;
+use A21ns1g4ts\FilamentCollections\Observers\CollectionConfigObserver;
+use A21ns1g4ts\FilamentCollections\Observers\CollectionDataObserver;
 use A21ns1g4ts\FilamentCollections\Testing\TestsFilamentCollections;
 use Filament\Support\Assets\AlpineComponent;
 use Filament\Support\Assets\Asset;
@@ -91,6 +95,9 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
 
         // Testing
         Testable::mixin(new TestsFilamentCollections);
+
+        CollectionConfig::observe(CollectionConfigObserver::class);
+        CollectionData::observe(CollectionDataObserver::class);
     }
 
     protected function getAssetPackageName(): ?string

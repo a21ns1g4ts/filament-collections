@@ -1,11 +1,12 @@
 <?php
 
-use A21ns1g4ts\FilamentCollections\Http\Controllers\CollectionContentController;
+use A21ns1g4ts\FilamentCollections\Http\Controllers\CollectionDataController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('api/collections', [CollectionContentController::class, 'index'])
-    ->name('collections.index');
-
-Route::post('api/collections', [CollectionContentController::class, 'store'])
-    ->middleware(['auth:sanctum', 'abilities:create'])
-    ->name('collections.store');
+Route::prefix('api/collections')->as('collections.')->group(function () {
+    Route::get('/{collectionKey}', [CollectionDataController::class, 'index'])->name('index');
+    Route::post('/{collectionKey}', [CollectionDataController::class, 'store'])->name('store');
+    Route::get('/{collectionKey}/{id}', [CollectionDataController::class, 'show'])->name('show');
+    Route::put('/{collectionKey}/{id}', [CollectionDataController::class, 'update'])->name('update');
+    Route::delete('/{collectionKey}/{id}', [CollectionDataController::class, 'destroy'])->name('destroy');
+});

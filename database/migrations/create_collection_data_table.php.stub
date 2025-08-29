@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('collections_data', function (Blueprint $table) {
+        Schema::create('collection_data', function (Blueprint $table) {
             $table->id();
             $table->foreignId('collection_config_id')
                   ->constrained('collection_configs')
@@ -20,6 +20,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('collections_data');
+        Schema::dropIfExists('collection_data');
     }
 };

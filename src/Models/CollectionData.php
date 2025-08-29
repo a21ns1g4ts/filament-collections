@@ -2,12 +2,14 @@
 
 namespace A21ns1g4ts\FilamentCollections\Models;
 
+use A21ns1g4ts\FilamentCollections\Models\Traits\HasDynamicRelationships;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CollectionData extends Model
 {
+    use HasDynamicRelationships;
     use HasFactory;
 
     protected $fillable = [

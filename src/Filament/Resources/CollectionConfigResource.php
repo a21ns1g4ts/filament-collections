@@ -24,6 +24,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use ValentinMorice\FilamentJsonColumn\JsonColumn;
+use Closure; // Importar Closure
 
 class CollectionConfigResource extends Resource
 {
@@ -59,7 +60,7 @@ class CollectionConfigResource extends Resource
                         ->maxLength(50)
                         ->regex('/^[a-z_]+$/')
                         ->unique(CollectionConfig::class, 'key', ignoreRecord: true)
-                        ->disabled(fn ($operation) => $operation === 'edit')
+                        ->disabled(fn($operation) => $operation === 'edit')
                         ->columnSpan(2),
 
                     Textarea::make('description')
@@ -67,6 +68,21 @@ class CollectionConfigResource extends Resource
                         ->rows(2)
                         ->maxLength(255)
                         ->nullable()
+                        ->columnSpan(2),
+
+                    Select::make('title_field')
+                        ->label('Title Field')
+                        ->options(function ($get) {
+                            $schema = $get('schema') ?? [];
+
+                            return collect($schema)
+                                ->filter(fn($field) => $field['name'])
+                                ->where('type', '!==', 'collection')
+                                ->pluck('name', 'name')
+                                ->toArray();
+                        })
+                        ->required()
+                        ->reactive()
                         ->columnSpan(2),
                 ]),
 
@@ -76,7 +92,7 @@ class CollectionConfigResource extends Resource
                     Repeater::make('schema')
                         ->label(__('filament-collections::default.fields.fields'))
                         ->addActionLabel(__('filament-collections::default.actions.add_field'))
-                        ->itemLabel(fn ($state) => $state['name'] ?? __('filament-collections::default.labels.new_field'))
+                        ->itemLabel(fn($state) => $state['name'] ?? __('filament-collections::default.labels.new_field'))
                         ->collapsible()
                         ->collapsed()
                         ->cloneable()
@@ -96,6 +112,7 @@ class CollectionConfigResource extends Resource
                                         'datetime' => __('filament-collections::default.types.datetime'),
                                         'color' => __('filament-collections::default.types.color'),
                                         'json' => __('filament-collections::default.types.json'),
+                                        'collection' => 'Collection',
                                     ])
                                     ->required()
                                     ->reactive(),
@@ -104,13 +121,46 @@ class CollectionConfigResource extends Resource
                                     ->label(__('filament-collections::default.fields.name'))
                                     ->required()
                                     ->maxLength(50)
-                                    ->columnSpan(2),
+                                    ->columnSpan(2)
+                                    // Validação para nome único dentro do repeater
+                                    ->rules([
+                                        fn ($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
+                                            $currentRepeaterItems = $get('../../schema'); // Pega todos os itens do repeater
+                                            $currentFieldUuid = $livewire->currentlyOpenRepeaterItems[$attribute] ?? null; // Obtém o UUID do item atual, se disponível
+
+                                            $count = collect($currentRepeaterItems)
+                                                ->filter(fn($item, $uuid) => ($item['name'] ?? null) === $value && $uuid !== $currentFieldUuid)
+                                                ->count();
+
+                                            if ($count > 1) {
+                                                $fail("O nome '{$value}' já está em uso em outro campo.");
+                                            }
+                                        },
+                                    ]),
 
                                 TextInput::make('label')
                                     ->label(__('filament-collections::default.fields.label'))
                                     ->maxLength(100)
                                     ->nullable()
-                                    ->columnSpan(2),
+                                    ->columnSpan(2)
+                                    // Validação para label único dentro do repeater
+                                    ->rules([
+                                        fn ($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
+                                            if (empty($value)) { // Permite que labels vazias sejam repetidas
+                                                return;
+                                            }
+                                            $currentRepeaterItems = $get('../../schema');
+                                            $currentFieldUuid = $livewire->currentlyOpenRepeaterItems[$attribute] ?? null;
+
+                                            $count = collect($currentRepeaterItems)
+                                                ->filter(fn($item, $uuid) => ($item['label'] ?? null) === $value && $uuid !== $currentFieldUuid)
+                                                ->count();
+
+                                            if ($count > 1) {
+                                                $fail("O rótulo '{$value}' já está em uso em outro campo.");
+                                            }
+                                        },
+                                    ]),
                             ]),
 
                             Group::make()->columns(5)->schema([
@@ -118,9 +168,30 @@ class CollectionConfigResource extends Resource
                                     ->label(__('filament-collections::default.fields.options'))
                                     ->helperText(__('filament-collections::default.fields.options_help'))
                                     ->rows(3)
-                                    ->visible(fn ($get) => $get('type') === 'select')
+                                    ->visible(fn($get) => $get('type') === 'select')
                                     ->columnSpan(5),
                             ]),
+
+                            Group::make()->columns(2)->schema([
+                                Select::make('relationship_type')
+                                    ->label('Relationship Type')
+                                    ->options([
+                                        'belongsTo' => 'Belongs To',
+                                        'hasMany' => 'Has Many',
+                                        'hasOne' => 'Has One',
+                                    ])
+                                    ->required()
+                                    ->visible(fn($get) => $get('type') === 'collection'),
+
+                                Select::make('target_collection_key')
+                                    ->label('Target Collection')
+                                    ->options(
+                                        \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::all()->pluck('key', 'key')->toArray()
+                                    )
+                                    ->required()
+                                    ->visible(fn($get) => $get('type') === 'collection'),
+                            ])
+                            ->visible(fn($get) => $get('type') === 'collection'),
 
                             Group::make()->columns(8)->schema([
                                 Toggle::make('required')
@@ -139,51 +210,51 @@ class CollectionConfigResource extends Resource
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->default(null)
-                                    ->visible(fn ($get) => ! in_array($get('type'), ['select', 'json', 'number', 'boolean', 'datetime', 'date', 'color']))
+                                    ->visible(fn($get) => ! in_array($get('type'), ['select', 'json', 'number', 'boolean', 'datetime', 'date', 'color']))
                                     ->columnSpan(2),
 
                                 ColorPicker::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
-                                    ->visible(fn ($get) => $get('type') === 'color')
+                                    ->visible(fn($get) => $get('type') === 'color')
                                     ->columnSpan(2),
 
                                 JsonColumn::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->editorOnly()
-                                    ->visible(fn ($get) => $get('type') === 'json')
+                                    ->visible(fn($get) => $get('type') === 'json')
                                     ->columnSpanFull(2),
 
                                 TextInput::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->numeric()
-                                    ->visible(fn ($get) => $get('type') === 'number')
+                                    ->visible(fn($get) => $get('type') === 'number')
                                     ->columnSpan(2),
 
                                 DateTimePicker::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
-                                    ->visible(fn ($get) => $get('type') === 'datetime')
+                                    ->visible(fn($get) => $get('type') === 'datetime')
                                     ->columnSpan(2),
 
                                 DatePicker::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
-                                    ->visible(fn ($get) => $get('type') === 'date')
+                                    ->visible(fn($get) => $get('type') === 'date')
                                     ->columnSpan(2),
 
                                 ToggleNullable::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
-                                    ->visible(fn ($get) => $get('type') === 'boolean')
+                                    ->visible(fn($get) => $get('type') === 'boolean')
                                     ->columnSpan(2),
 
                                 Select::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
-                                    ->options(fn ($get) => collect(explode("\n", $get('options') ?? ''))
+                                    ->options(fn($get) => collect(explode("\n", $get('options') ?? ''))
                                         ->mapWithKeys(function ($line) {
                                             $line = trim($line);
 
@@ -191,7 +262,7 @@ class CollectionConfigResource extends Resource
                                                 ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
                                                 : [$line => $line];
                                         })->toArray())
-                                    ->visible(fn ($get) => $get('type') === 'select')
+                                    ->visible(fn($get) => $get('type') === 'select')
                                     ->columnSpan(2),
 
                                 TextInput::make('hint')
@@ -202,7 +273,8 @@ class CollectionConfigResource extends Resource
                             ]),
                         ]),
                 ]),
-        ]);
+            ]);
+
     }
 
     public static function table(Table $table): Table
@@ -230,7 +302,8 @@ class CollectionConfigResource extends Resource
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ])
+            ->defaultSort('id', 'desc');
     }
 
     public static function getPages(): array

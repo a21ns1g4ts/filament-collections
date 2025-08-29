@@ -13,6 +13,7 @@ class CollectionConfig extends Model
     protected $fillable = [
         'key',
         'description',
+        'title_field',
         'schema',
         'ui_schema',
     ];

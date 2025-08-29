@@ -30,11 +30,13 @@ class TestCase extends Orchestra
     {
         parent::setUp();
 
+        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+
+        $this->artisan('migrate', ['--database' => 'testing'])->run();
+
         Factory::guessFactoryNamesUsing(
             fn (string $modelName) => 'A21ns1g4ts\\FilamentCollections\\Database\\Factories\\' . class_basename($modelName) . 'Factory'
         );
-
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
     }
 
     protected function getPackageProviders($app)
@@ -66,15 +68,14 @@ class TestCase extends Orchestra
             'prefix' => '',
         ]);
 
-        // --- ADICIONE ESTA CONFIGURAÇÃO DO SANCTUM ---
         config()->set('auth.guards.sanctum', [
             'driver' => 'sanctum',
-            'provider' => 'users', // O provider padrão para seus usuários
+            'provider' => 'users',
         ]);
 
         config()->set('auth.providers.users', [
             'driver' => 'eloquent',
-            'model' => User::class, // Ou o caminho para o seu modelo de usuário
+            'model' => User::class,
         ]);
 
         foreach (\Illuminate\Support\Facades\File::allFiles(__DIR__ . '/../database/migrations') as $migration) {

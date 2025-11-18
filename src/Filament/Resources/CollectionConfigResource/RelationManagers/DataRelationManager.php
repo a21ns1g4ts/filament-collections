@@ -3,15 +3,18 @@
 namespace A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers;
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Section as ComponentsSection;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Unique;
-use ValentinMorice\FilamentJsonColumn\JsonColumn;
 
 class DataRelationManager extends RelationManager
 {
@@ -25,12 +28,12 @@ class DataRelationManager extends RelationManager
 
     protected static ?string $recordTitleAttribute = 'id';
 
-    public function form(Form $form): Form
+    public function form(Schema $form): Schema
     {
         $schema = $this->ownerRecord->schema; // @phpstan-ignore-line
 
         return $form->schema([
-            Section::make('Preenchimento dos Campos')
+            ComponentsSection::make('Preenchimento dos Campos')
                 ->description('Complete os dados da coleção conforme o schema configurado.')
                 ->schema([
                     Forms\Components\TextInput::make('payload.uuid')
@@ -71,7 +74,7 @@ class DataRelationManager extends RelationManager
                             'date' => Forms\Components\DatePicker::make("payload.{$name}"),
                             'datetime' => Forms\Components\DateTimePicker::make("payload.{$name}"),
                             'color' => Forms\Components\ColorPicker::make("payload.{$name}"),
-                            'json' => JsonColumn::make("payload.{$name}")
+                            'json' => Forms\Components\TextInput::make("payload.{$name}")
                                 ->nullable()
                                 ->editorOnly()
                                 ->default(is_array($default) ? json_encode($default, JSON_PRETTY_PRINT) : $default),
@@ -169,14 +172,14 @@ class DataRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                DeleteBulkAction::make(),
             ])
             ->defaultSort('id', 'desc');
     }

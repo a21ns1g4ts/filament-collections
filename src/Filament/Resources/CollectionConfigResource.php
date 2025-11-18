@@ -9,27 +9,31 @@ use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\P
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\ApisRelationManager;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\DataRelationManager;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use Filament\Tables;
+use BackedEnum;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables\Table;
-use ValentinMorice\FilamentJsonColumn\JsonColumn;
+use Livewire\Form;
 
 class CollectionConfigResource extends Resource
 {
     protected static ?string $model = CollectionConfig::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-inbox-stack';
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-inbox-stack';
 
     public static function getNavigationLabel(): string
     {
@@ -46,7 +50,7 @@ class CollectionConfigResource extends Resource
         return __('filament-collections::default.modelLabelPlural');
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
     {
         return $form->schema([
             Section::make(__('filament-collections::default.form.identification'))
@@ -148,7 +152,7 @@ class CollectionConfigResource extends Resource
                                     ->visible(fn ($get) => $get('type') === 'color')
                                     ->columnSpan(2),
 
-                                JsonColumn::make('default')
+                                TextInput::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->editorOnly()
@@ -224,12 +228,12 @@ class CollectionConfigResource extends Resource
                     ->sortable(),
             ])
             ->filters([])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+               EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                DeleteBulkAction::make(),
             ]);
     }
 

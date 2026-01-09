@@ -155,7 +155,7 @@ class CollectionConfigResource extends Resource
                                 TextInput::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
-                                    ->editorOnly()
+                                    ->readOnly()
                                     ->visible(fn ($get) => $get('type') === 'json')
                                     ->columnSpanFull(2),
 

@@ -76,7 +76,7 @@ class DataRelationManager extends RelationManager
                             'color' => Forms\Components\ColorPicker::make("payload.{$name}"),
                             'json' => Forms\Components\TextInput::make("payload.{$name}")
                                 ->nullable()
-                                ->editorOnly()
+                                ->readOnly()
                                 ->default(is_array($default) ? json_encode($default, JSON_PRETTY_PRINT) : $default),
                             default => Forms\Components\TextInput::make("payload.{$name}"),
                         };

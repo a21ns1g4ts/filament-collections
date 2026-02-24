@@ -19,7 +19,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -30,7 +30,7 @@ class CollectionConfigResource extends Resource
 {
     protected static ?string $model = CollectionConfig::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-inbox-stack';
+    protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-inbox-stack';
 
     public static function getNavigationLabel(): string
     {
@@ -47,7 +47,7 @@ class CollectionConfigResource extends Resource
         return __('filament-collections::default.modelLabelPlural');
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $form): Schema
     {
         return $form->schema([
             Section::make(__('filament-collections::default.form.identification'))
@@ -124,7 +124,7 @@ class CollectionConfigResource extends Resource
                                     ->columnSpan(2)
                                     // Validação para nome único dentro do repeater
                                     ->rules([
-                                        fn ($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
+                                        fn($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
                                             $currentRepeaterItems = $get('../../schema'); // Pega todos os itens do repeater
                                             $currentFieldUuid = $livewire->currentlyOpenRepeaterItems[$attribute] ?? null; // Obtém o UUID do item atual, se disponível
 
@@ -145,7 +145,7 @@ class CollectionConfigResource extends Resource
                                     ->columnSpan(2)
                                     // Validação para label único dentro do repeater
                                     ->rules([
-                                        fn ($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
+                                        fn($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
                                             if (empty($value)) { // Permite que labels vazias sejam repetidas
                                                 return;
                                             }
@@ -191,7 +191,7 @@ class CollectionConfigResource extends Resource
                                     ->required()
                                     ->visible(fn($get) => $get('type') === 'collection'),
                             ])
-                            ->visible(fn($get) => $get('type') === 'collection'),
+                                ->visible(fn($get) => $get('type') === 'collection'),
 
                             Group::make()->columns(8)->schema([
                                 Toggle::make('required')
@@ -273,8 +273,7 @@ class CollectionConfigResource extends Resource
                             ]),
                         ]),
                 ]),
-            ]);
-
+        ]);
     }
 
     public static function table(Table $table): Table

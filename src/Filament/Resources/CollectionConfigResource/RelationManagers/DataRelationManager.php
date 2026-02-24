@@ -4,10 +4,14 @@ namespace A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigReso
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
-use Filament\Forms\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Section;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -222,14 +226,14 @@ class DataRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+            ->groupedBulkActions([
+                DeleteBulkAction::make(),
             ])
             ->defaultSort('id', 'desc');
     }

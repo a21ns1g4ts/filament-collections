@@ -12,9 +12,7 @@ use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Group;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -25,6 +23,11 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use ValentinMorice\FilamentJsonColumn\JsonColumn;
 use Closure; // Importar Closure
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 
 class CollectionConfigResource extends Resource
 {
@@ -295,12 +298,12 @@ class CollectionConfigResource extends Resource
                     ->sortable(),
             ])
             ->filters([])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
+            ->groupedBulkActions([
+                DeleteBulkAction::make(),
             ])
             ->defaultSort('id', 'desc');
     }

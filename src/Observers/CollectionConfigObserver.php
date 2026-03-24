@@ -61,8 +61,8 @@ class CollectionConfigObserver
                 $relationshipType = $field['relationship_type'] ?? null;
                 if ($relationshipType === 'belongsTo') {
                     $inverseRelationshipName = $collectionConfig->key;
-                } elseif ($relationshipType === 'hasMany') {
-                    $inverseRelationshipName = $inflector->singularize($collectionConfig->key);
+                } elseif ($relationshipType === 'hasMany' || $relationshipType === 'hasOne') {
+                    $inverseRelationshipName = $inflector->singularize($collectionConfig->key).'_uuid';
                 }
             }
 
@@ -106,37 +106,40 @@ class CollectionConfigObserver
             if ($relationshipType === 'belongsTo') {
                 $inverseRelationshipName = $inverseRelationshipName ?: $collectionConfig->key;
                 $inverseType = 'hasMany';
-            } elseif ($relationshipType === 'hasMany') {
-                $inverseRelationshipName = $inverseRelationshipName ?: $inflector->singularize($collectionConfig->key);
-                $inverseType = 'belongsTo';
-            } elseif ($relationshipType === 'hasOne') {
-                $inverseRelationshipName = $inverseRelationshipName ?: $inflector->singularize($collectionConfig->key);
-                $inverseType = 'hasOne';
+            } elseif ($relationshipType === 'hasMany' || $relationshipType === 'hasOne') {
+                if (empty($field['foreign_key_on_target'])) {
+                    $field['foreign_key_on_target'] = $inflector->singularize($collectionConfig->key).'_uuid';
+                }
+                $inverseRelationshipName = $inverseRelationshipName ?: $field['foreign_key_on_target'];
+                $inverseType = ($relationshipType === 'hasMany') ? 'belongsTo' : 'hasOne';
             }
 
             if ($inverseRelationshipName && $inverseType) {
                 $field['inverse_relationship_name'] = $inverseRelationshipName;
-                $this->addOrUpdateInverseRelationship($targetConfig, $inverseRelationshipName, $inverseType, $collectionConfig->key, $field['name']);
+                $this->addOrUpdateInverseRelationship($targetConfig, $inverseRelationshipName, $inverseType, $collectionConfig->key, $field['name'], $field['on_delete'] ?? 'restrict');
             }
         }
         unset($field);
     }
 
-    protected function addOrUpdateInverseRelationship(CollectionConfig $targetConfig, string $inverseName, string $inverseType, string $sourceKey, string $sourceFieldName)
+    protected function addOrUpdateInverseRelationship(CollectionConfig $targetConfig, string $inverseName, string $inverseType, string $sourceKey, string $sourceFieldName, string $onDelete = 'restrict')
     {
         $targetSchema = $targetConfig->schema ?? [];
         $inverseFieldExists = false;
         $updatedSchema = [];
 
-        foreach ($targetSchema as $targetField) {
+        foreach ($targetSchema as &$targetField) {
             if (($targetField['name'] ?? null) === $inverseName) {
                 $targetField['relationship_type'] = $inverseType;
                 $targetField['target_collection_key'] = $sourceKey;
                 $targetField['inverse_relationship_name'] = $sourceFieldName;
+                $targetField['foreign_key_on_target'] = in_array($inverseType, ['hasMany', 'hasOne']) ? $sourceFieldName : ($targetField['foreign_key_on_target'] ?? null);
+                $targetField['on_delete'] = $onDelete;
                 $inverseFieldExists = true;
             }
             $updatedSchema[] = $targetField;
         }
+        unset($targetField);
 
         if (! $inverseFieldExists) {
             $updatedSchema[] = [
@@ -150,6 +153,8 @@ class CollectionConfigObserver
                 'relationship_type' => $inverseType,
                 'target_collection_key' => $sourceKey,
                 'inverse_relationship_name' => $sourceFieldName,
+                'foreign_key_on_target' => in_array($inverseType, ['hasMany', 'hasOne']) ? $sourceFieldName : null,
+                'on_delete' => $onDelete,
             ];
         }
 

@@ -60,10 +60,11 @@ class CollectionConfigResource extends Resource
                         ->label(__('filament-collections::default.fields.key'))
                         ->helperText(__('filament-collections::default.fields.key_help'))
                         ->required()
+                        ->default('collection_')
                         ->maxLength(50)
                         ->regex('/^[a-z_]+$/')
                         ->unique(CollectionConfig::class, 'key', ignoreRecord: true)
-                        ->disabled(fn($operation) => $operation === 'edit')
+                        ->disabled(fn ($operation) => $operation === 'edit')
                         ->columnSpan(2),
 
                     Textarea::make('description')
@@ -120,19 +121,25 @@ class CollectionConfigResource extends Resource
                                     ->required()
                                     ->reactive(),
 
-                                TextInput::make('name')
+                                 TextInput::make('name')
                                     ->label(__('filament-collections::default.fields.name'))
                                     ->required()
                                     ->maxLength(50)
                                     ->columnSpan(2)
+                                    ->reactive()
+                                    ->debounce(500)
                                     // Validação para nome único dentro do repeater
                                     ->rules([
-                                        fn($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
+                                        fn ($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
+                                            if ($value === 'uuid') {
+                                                $fail("O nome 'uuid' é reservado pelo sistema.");
+                                            }
+
                                             $currentRepeaterItems = $get('../../schema'); // Pega todos os itens do repeater
                                             $currentFieldUuid = $livewire->currentlyOpenRepeaterItems[$attribute] ?? null; // Obtém o UUID do item atual, se disponível
 
                                             $count = collect($currentRepeaterItems)
-                                                ->filter(fn($item, $uuid) => ($item['name'] ?? null) === $value && $uuid !== $currentFieldUuid)
+                                                ->filter(fn ($item, $uuid) => ($item['name'] ?? null) === $value && $uuid !== $currentFieldUuid)
                                                 ->count();
 
                                             if ($count > 1) {
@@ -180,10 +187,12 @@ class CollectionConfigResource extends Resource
                                     ->label('Relationship Type')
                                     ->options([
                                         'belongsTo' => 'Belongs To',
-                                        'hasMany' => 'Has Many',
                                         'hasOne' => 'Has One',
+                                        'hasMany' => 'Has Many',
+                                        'belongsToMany' => 'Belongs To Many',
                                     ])
                                     ->required()
+                                    ->reactive()
                                     ->visible(fn($get) => $get('type') === 'collection'),
 
                                 Select::make('target_collection_key')
@@ -192,9 +201,45 @@ class CollectionConfigResource extends Resource
                                         \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::all()->pluck('key', 'key')->toArray()
                                     )
                                     ->required()
-                                    ->visible(fn($get) => $get('type') === 'collection'),
+                                    ->reactive()
+                                    ->visible(fn ($get) => $get('type') === 'collection')
+                                    ->createOptionForm(fn (Schema $schema) => static::form($schema))
+                                    ->createOptionUsing(function (array $data) {
+                                        return CollectionConfig::create($data)->key;
+                                    }),
+
+                                Select::make('foreign_key_on_target')
+                                    ->label('Foreign Key on Target')
+                                    ->helperText('O nome do campo na coleção de destino que se refere a este registro da coleção. Deixe vazio para gerar automaticamente como {collection}_uuid.')
+                                    ->options(function ($get) {
+                                        $targetCollectionKey = $get('target_collection_key');
+                                        if (! $targetCollectionKey) {
+                                            return [];
+                                        }
+
+                                        $targetConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::where('key', $targetCollectionKey)->first();
+                                        if (! $targetConfig) {
+                                            return [];
+                                        }
+
+                                        return collect($targetConfig->schema)
+                                            ->pluck('name', 'name')
+                                            ->toArray();
+                                    })
+                                    ->searchable()
+                                    ->visible(fn ($get) => in_array($get('relationship_type'), ['hasMany', 'hasOne'])),
+
+                                Select::make('on_delete')
+                                    ->label('Comportamento ao Deletar')
+                                    ->options([
+                                        'restrict' => 'Restringir (Bloqueia se houver vinculados)',
+                                        'cascade' => 'Cascata (Deleta vinculados)',
+                                        'set_null' => 'Anular (Remove apenas a referência)',
+                                    ])
+                                    ->default('restrict')
+                                    ->required(),
                             ])
-                                ->visible(fn($get) => $get('type') === 'collection'),
+                                ->visible(fn ($get) => $get('type') === 'collection'),
 
                             Group::make()->columns(8)->schema([
                                 Toggle::make('required')

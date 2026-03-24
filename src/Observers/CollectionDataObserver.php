@@ -11,7 +11,13 @@ class CollectionDataObserver
 {
     public function saving(CollectionData $collectionData): void
     {
-        if (!$collectionData->relationLoaded('config')) {
+        $payload = $collectionData->payload;
+        if (empty(Arr::get($payload, 'uuid'))) {
+            $payload['uuid'] = (string) \Illuminate\Support\Str::uuid();
+            $collectionData->payload = $payload;
+        }
+
+        if (! $collectionData->relationLoaded('config')) {
             $collectionData->load('config');
         }
 
@@ -152,6 +158,64 @@ class CollectionDataObserver
         }
     }
 
+    public function deleting(CollectionData $collectionData): void
+    {
+        $uuid = Arr::get($collectionData->payload, 'uuid');
+        if (empty($uuid)) {
+            return;
+        }
+
+        if (! $collectionData->relationLoaded('config')) {
+            $collectionData->load('config');
+        }
+
+        $collectionKey = Arr::get($collectionData->config, 'key');
+        if (empty($collectionKey)) {
+            return;
+        }
+
+        // Search for all configs that have a relationship pointing to this collection
+        $sourceConfigs = CollectionConfig::where('schema', 'like', '%"target_collection_key":"'.$collectionKey.'"%')->get();
+
+        foreach ($sourceConfigs as $sourceConfig) {
+            foreach ($sourceConfig->schema as $field) {
+                if (Arr::get($field, 'type') !== 'collection' || Arr::get($field, 'target_collection_key') !== $collectionKey) {
+                    continue;
+                }
+
+                $onDelete = Arr::get($field, 'on_delete', 'restrict');
+                if ($onDelete !== 'restrict') {
+                    continue;
+                }
+
+                $relationshipType = Arr::get($field, 'relationship_type');
+                $foreignKeyName = Arr::get($field, 'name');
+
+                if ($relationshipType === 'belongsTo') {
+                    $hasRelated = CollectionData::where('collection_config_id', $sourceConfig->id)
+                        ->where("payload->{$foreignKeyName}", $uuid)
+                        ->exists();
+
+                    if ($hasRelated) {
+                        throw ValidationException::withMessages([
+                            'deletion' => "Não é possível excluir: existem registros relacionados em '{$sourceConfig->key}' (campo: '{$foreignKeyName}').",
+                        ]);
+                    }
+                } elseif ($relationshipType === 'hasMany') {
+                    $hasRelated = CollectionData::where('collection_config_id', $sourceConfig->id)
+                        ->whereJsonContains("payload->{$foreignKeyName}", $uuid)
+                        ->exists();
+
+                    if ($hasRelated) {
+                        throw ValidationException::withMessages([
+                            'deletion' => "Não é possível excluir: existem registros relacionados em '{$sourceConfig->key}' (campo: '{$foreignKeyName}').",
+                        ]);
+                    }
+                }
+            }
+        }
+    }
+
     public function deleted(CollectionData $collectionData): void
     {
         $deletedUuid = Arr::get($collectionData->payload, 'uuid');
@@ -159,7 +223,7 @@ class CollectionDataObserver
             return;
         }
 
-        if (!$collectionData->relationLoaded('config')) {
+        if (! $collectionData->relationLoaded('config')) {
             $collectionData->load('config');
         }
 
@@ -168,7 +232,7 @@ class CollectionDataObserver
             return;
         }
 
-        $sourceConfigs = CollectionConfig::where('schema', 'like', '%"target_collection_key":"' . $deletedCollectionKey . '"%')->get();
+        $sourceConfigs = CollectionConfig::where('schema', 'like', '%"target_collection_key":"'.$deletedCollectionKey.'"%')->get();
 
         foreach ($sourceConfigs as $sourceConfig) {
             foreach ($sourceConfig->schema as $field) {
@@ -178,32 +242,43 @@ class CollectionDataObserver
 
                 $relationshipType = Arr::get($field, 'relationship_type');
                 $foreignKeyName = Arr::get($field, 'name');
+                $onDelete = Arr::get($field, 'on_delete', 'restrict');
 
-                if (empty($foreignKeyName)) {
-                    continue;
-                }
-
-                if ($relationshipType === 'belongsTo') {
-                    CollectionData::where('collection_config_id', $sourceConfig->id)
-                        ->where("payload->{$foreignKeyName}", $deletedUuid)
-                        ->each(function (CollectionData $item) use ($foreignKeyName) {
-                            $payload = $item->payload;
-                            unset($payload[$foreignKeyName]);
-                            $item->update(['payload' => $payload]);
-                        });
-                } elseif ($relationshipType === 'hasMany') {
-                    CollectionData::where('collection_config_id', $sourceConfig->id)
-                        ->whereJsonContains("payload->{$foreignKeyName}", $deletedUuid)
-                        ->each(function (CollectionData $item) use ($foreignKeyName, $deletedUuid) {
-                            $payload = $item->payload;
-                            $uuids = Arr::get($payload, $foreignKeyName, []);
-
-                            if (is_array($uuids)) {
-                                $filteredUuids = array_values(array_filter($uuids, fn($uuid) => $uuid !== $deletedUuid));
-                                Arr::set($payload, $foreignKeyName, $filteredUuids);
+                if ($onDelete === 'cascade') {
+                    if ($relationshipType === 'belongsTo') {
+                        CollectionData::where('collection_config_id', $sourceConfig->id)
+                            ->where("payload->{$foreignKeyName}", $deletedUuid)
+                            ->get()
+                            ->each(fn (CollectionData $item) => $item->delete());
+                    } elseif ($relationshipType === 'hasMany') {
+                        CollectionData::where('collection_config_id', $sourceConfig->id)
+                            ->whereJsonContains("payload->{$foreignKeyName}", $deletedUuid)
+                            ->get()
+                            ->each(fn (CollectionData $item) => $item->delete());
+                    }
+                } elseif ($onDelete === 'set_null') {
+                    if ($relationshipType === 'belongsTo') {
+                        CollectionData::where('collection_config_id', $sourceConfig->id)
+                            ->where("payload->{$foreignKeyName}", $deletedUuid)
+                            ->each(function (CollectionData $item) use ($foreignKeyName) {
+                                $payload = $item->payload;
+                                unset($payload[$foreignKeyName]);
                                 $item->update(['payload' => $payload]);
-                            }
-                        });
+                            });
+                    } elseif ($relationshipType === 'hasMany') {
+                        CollectionData::where('collection_config_id', $sourceConfig->id)
+                            ->whereJsonContains("payload->{$foreignKeyName}", $deletedUuid)
+                            ->each(function (CollectionData $item) use ($foreignKeyName, $deletedUuid) {
+                                $payload = $item->payload;
+                                $uuids = Arr::get($payload, $foreignKeyName, []);
+
+                                if (is_array($uuids)) {
+                                    $filteredUuids = array_values(array_filter($uuids, fn ($uuid) => $uuid !== $deletedUuid));
+                                    Arr::set($payload, $foreignKeyName, $filteredUuids);
+                                    $item->update(['payload' => $payload]);
+                                }
+                            });
+                    }
                 }
             }
         }

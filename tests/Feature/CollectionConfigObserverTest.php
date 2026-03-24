@@ -27,7 +27,7 @@ it('it creates inverse relationship if it does not exist', function () {
 
     $tagsConfig->refresh();
 
-    $inverseField = collect($tagsConfig->schema)->firstWhere('name', 'post');
+    $inverseField = collect($tagsConfig->schema)->firstWhere('name', 'post_uuid');
 
     expect($inverseField)->not->toBeNull();
     expect($inverseField['relationship_type'])->toBe('belongsTo');
@@ -105,7 +105,7 @@ it('it removes inverse relationship and data when field is deleted', function ()
 
     $tag = CollectionData::factory()->create([
         'collection_config_id' => $tagsConfig->id,
-        'payload' => ['uuid' => 'tag-1', 'post' => 'post-1'],
+        'payload' => ['uuid' => 'tag-1', 'post_uuid' => 'post-1'],
     ]);
 
     // Act
@@ -122,7 +122,7 @@ it('it removes inverse relationship and data when field is deleted', function ()
 
     // Check if data is cleaned up
     expect($post->payload)->not->toHaveKey('tags');
-    expect($tag->payload)->not->toHaveKey('post');
+    expect($tag->payload)->not->toHaveKey('post_uuid');
 });
 
 it('it creates inverse hasOne relationship', function () {
@@ -149,7 +149,7 @@ it('it creates inverse hasOne relationship', function () {
 
     $profileConfig->refresh();
 
-    $inverseField = collect($profileConfig->schema)->firstWhere('name', 'user');
+    $inverseField = collect($profileConfig->schema)->firstWhere('name', 'user_uuid');
 
     expect($inverseField)->not->toBeNull();
     expect($inverseField['relationship_type'])->toBe('hasOne');

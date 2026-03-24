@@ -24,62 +24,47 @@ trait HasDynamicRelationships
                     $relatedModel = self::class;
                     $targetCollectionKey = $field['target_collection_key'] ?? null;
 
-                    if (! $targetCollectionKey) {
-                        continue;
-                    }
+                    if (!$targetCollectionKey) continue;
 
                     $targetConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
 
-                    if (! $targetConfig) {
-                        continue;
-                    }
+                    if (!$targetConfig) continue;
+
+                    $result = null;
 
                     if ($relationshipType === 'belongsTo') {
                         $foreignKeyValue = $this->payload[$field['name']] ?? null;
-                        if (! $foreignKeyValue) {
-                            return null;
+                        if ($foreignKeyValue) {
+                            $result = $relatedModel::where('collection_config_id', $targetConfig->id)
+                                ->where('payload->uuid', $foreignKeyValue)
+                                ->first();
                         }
-
-                        return $relatedModel::where('collection_config_id', $targetConfig->id)
-                            ->where('payload->uuid', $foreignKeyValue)
-                            ->first();
-                    }
-
-                    if ($relationshipType === 'hasOne') {
-                        $foreignKeyValue = $this->payload[$field['name']] ?? null;
-                        if (! $foreignKeyValue) {
-                            return null;
-                        }
-
-                        return $relatedModel::where('collection_config_id', $targetConfig->id)
-                            ->where('payload->uuid', $foreignKeyValue)
-                            ->first();
-                    }
-
-                    if ($relationshipType === 'hasMany') {
+                    } elseif ($relationshipType === 'hasOne' || $relationshipType === 'hasMany') {
                         $foreignKeyOnTarget = $field['foreign_key_on_target'] ?? null;
-                        if (! $foreignKeyOnTarget) {
-                            continue;
-                        }
                         $uuid = $this->payload['uuid'] ?? null;
-                        if (! $uuid) {
-                            return collect();
-                        }
 
-                        return $relatedModel::where('collection_config_id', $targetConfig->id)
-                            ->where("payload->{$foreignKeyOnTarget}", $uuid)
-                            ->get();
+                        if ($foreignKeyOnTarget && $uuid) {
+                            $query = $relatedModel::where('collection_config_id', $targetConfig->id)
+                                ->where("payload->{$foreignKeyOnTarget}", $uuid);
+
+                            $result = ($relationshipType === 'hasOne') ? $query->first() : $query->get();
+                        } else {
+                            $result = ($relationshipType === 'hasOne') ? null : collect();
+                        }
+                    } elseif ($relationshipType === 'belongsToMany') {
+                        $foreignKeyValues = $this->payload[$field['name']] ?? [];
+                        if (is_array($foreignKeyValues) && !empty($foreignKeyValues)) {
+                            $result = $relatedModel::where('collection_config_id', $targetConfig->id)
+                                ->whereIn('payload->uuid', $foreignKeyValues)
+                                ->get();
+                        } else {
+                            $result = collect();
+                        }
                     }
 
-                    if ($relationshipType === 'belongsToMany') {
-                        $foreignKeyValues = $this->payload[$field['name']] ?? [];
-                        if (! is_array($foreignKeyValues) || empty($foreignKeyValues)) {
-                            return collect();
-                        }
-
-                        return $relatedModel::where('collection_config_id', $targetConfig->id)
-                            ->whereIn('payload->uuid', $foreignKeyValues)
-                            ->get();
+                    if ($result !== null || in_array($relationshipType, ['hasMany', 'belongsToMany'])) {
+                        $this->setRelation($key, $result);
+                        return $result;
                     }
                 }
             }

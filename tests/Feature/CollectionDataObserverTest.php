@@ -59,6 +59,7 @@ it('removes belongsTo reference when related item is deleted', function () {
                 'type' => 'collection',
                 'relationship_type' => 'belongsTo',
                 'target_collection_key' => 'authors',
+                'on_delete' => 'set_null',
             ],
         ],
     ]);
@@ -107,6 +108,7 @@ it('removes hasMany reference when related item is deleted', function () {
                 'type' => 'collection',
                 'relationship_type' => 'hasMany',
                 'target_collection_key' => 'tags',
+                'on_delete' => 'set_null',
             ],
         ],
     ]);

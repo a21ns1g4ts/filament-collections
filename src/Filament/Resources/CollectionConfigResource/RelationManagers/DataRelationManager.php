@@ -37,105 +37,141 @@ class DataRelationManager extends RelationManager
         return $form->schema([
             Section::make('Preenchimento dos Campos')
                 ->description('Complete os dados da coleção conforme o schema configurado.')
-                ->schema([
-                    Forms\Components\TextInput::make('payload.uuid')
-                        ->default(Str::uuid()->toString())
-                        ->disabled()
-                        ->dehydrated()
-                        ->label('UUID')
-                        ->required(),
-
-                    ...collect($schema)->map(function ($field) {
-                        $name = $field['name'] ?? null;
-
-                        if (! $name) {
-                            return null;
-                        }
-
-                        $label = $field['label'] ?? ucfirst($name);
-                        $type = $field['type'] ?? 'text';
-                        $required = $field['required'] ?? false;
-                        $default = $field['default'] ?? null;
-                        $hint = $field['hint'] ?? null;
-                        $unique = $field['unique'] ?? false;
-
-                        $component = match ($type) {
-                            'text' => Forms\Components\TextInput::make("payload.{$name}"),
-                            'textarea' => Forms\Components\Textarea::make("payload.{$name}"),
-                            'select' => Forms\Components\Select::make("payload.{$name}")
-                                ->options(fn() => collect(explode("\n", $field['options'] ?? ''))
-                                    ->mapWithKeys(function ($line) {
-                                        $line = trim($line);
-
-                                        return str_contains($line, ':')
-                                            ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
-                                            : [$line => $line];
-                                    })->toArray()),
-                            'boolean' => Forms\Components\Toggle::make("payload.{$name}"),
-                            'number' => Forms\Components\TextInput::make("payload.{$name}")->numeric(),
-                            'date' => Forms\Components\DatePicker::make("payload.{$name}"),
-                            'datetime' => Forms\Components\DateTimePicker::make("payload.{$name}"),
-                            'color' => Forms\Components\ColorPicker::make("payload.{$name}"),
-                            'json' => JsonColumn::make("payload.{$name}")
-                                ->nullable()
-                                ->editorOnly()
-                                ->default(is_array($default) ? json_encode($default, JSON_PRETTY_PRINT) : $default),
-                            'collection' => Forms\Components\Select::make("payload.{$name}")
-                                ->options(function () use ($field) {
-                                    $targetCollectionKey = $field['target_collection_key'] ?? null;
-                                    if (!$targetCollectionKey) {
-                                        return [];
-                                    }
-                                    $targetCollectionConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
-                                    if (!$targetCollectionConfig) {
-                                        return [];
-                                    }
-                                    $targetCollectionTitle = $targetCollectionConfig->title_field ?? 'uuid';
-                                    return CollectionData::where('collection_config_id', $targetCollectionConfig->id)
-                                        ->get()
-                                        ->pluck('payload.' . $targetCollectionTitle, 'payload.uuid')
-                                        ->toArray();
-                                })
-                                ->multiple(fn() => in_array($field['relationship_type'] ?? 'belongsTo', ['belongsToMany', 'hasMany']))
-                                ->searchable(),
-                            default => Forms\Components\TextInput::make("payload.{$name}"),
-                        };
-
-                        $component = $component
-                            ->label($label)
-                            ->required($required)
-                            ->default($default)
-                            ->helperText($hint);
-
-                        if ($unique) {
-                            $component = $component->unique(
-                                table: CollectionData::class,
-                                column: "payload->{$name}",
-                                ignorable: fn($record) => $record instanceof \A21ns1g4ts\FilamentCollections\Models\CollectionData ? $record : null,
-                                modifyRuleUsing: function (Unique $rule, $record, $component) use ($name) {
-                                    $inputValue = $component->getState();
-                                    $configId = $this->ownerRecord->id;
-                                    $uuid = $record?->payload['uuid'] ?? null;
-
-                                    $rule = $rule->where('collection_config_id', $configId)
-                                        ->where("payload->{$name}", $inputValue);
-
-                                    if ($uuid) {
-                                        $rule = $rule->where('payload->uuid', '!=', $uuid);
-                                    }
-
-                                    return $rule;
-                                }
-                            );
-                        }
-
-                        return $component;
-                    })
-                        ->filter()
-                        ->values()
-                        ->all(),
-                ]),
+                ->schema($this->getFieldsFromSchema($schema, $this->ownerRecord->id)),
         ]);
+    }
+
+    protected function getFieldsFromSchema(array $schema, ?int $configId = null, string $prefix = 'payload'): array
+    {
+        $fields = collect($schema)->map(function ($field) use ($configId, $prefix) {
+            $name = $field['name'] ?? null;
+
+            if (! $name || $name === 'uuid') {
+                return null;
+            }
+
+            $label = $field['label'] ?? ucfirst($name);
+            $type = $field['type'] ?? 'text';
+            $required = $field['required'] ?? false;
+            $default = $field['default'] ?? null;
+            $hint = $field['hint'] ?? null;
+            $unique = $field['unique'] ?? false;
+
+            $fieldName = "{$prefix}.{$name}";
+
+            $component = match ($type) {
+                'text' => Forms\Components\TextInput::make($fieldName),
+                'textarea' => Forms\Components\Textarea::make($fieldName),
+                'select' => Forms\Components\Select::make($fieldName)
+                    ->options(fn () => collect(explode("\n", $field['options'] ?? ''))
+                        ->mapWithKeys(function ($line) {
+                            $line = trim($line);
+
+                            return str_contains($line, ':')
+                                ? [explode(':', $line, 2)[0] => explode(':', $line, 2)[1]]
+                                : [$line => $line];
+                        })->toArray()),
+                'boolean' => Forms\Components\Toggle::make($fieldName),
+                'number' => Forms\Components\TextInput::make($fieldName)->numeric(),
+                'date' => Forms\Components\DatePicker::make($fieldName),
+                'datetime' => Forms\Components\DateTimePicker::make($fieldName),
+                'color' => Forms\Components\ColorPicker::make($fieldName),
+                'json' => JsonColumn::make($fieldName)
+                    ->nullable()
+                    ->editorOnly()
+                    ->default(is_array($default) ? json_encode($default, JSON_PRETTY_PRINT) : $default),
+                'collection' => Forms\Components\Select::make($fieldName)
+                    ->options(function () use ($field) {
+                        $targetCollectionKey = $field['target_collection_key'] ?? null;
+                        if (! $targetCollectionKey) {
+                            return [];
+                        }
+                        $targetCollectionConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
+                        if (! $targetCollectionConfig) {
+                            return [];
+                        }
+                        $targetCollectionTitle = $targetCollectionConfig->title_field ?? 'uuid';
+
+                        return CollectionData::where('collection_config_id', $targetCollectionConfig->id)
+                            ->get()
+                            ->pluck('payload.'.$targetCollectionTitle, 'payload.uuid')
+                            ->toArray();
+                    })
+                    ->multiple(fn () => ($field['relationship_type'] ?? 'belongsTo') === 'belongsToMany')
+                    ->visible(fn () => in_array($field['relationship_type'] ?? 'belongsTo', ['belongsTo', 'belongsToMany']))
+                    ->searchable()
+                    ->createOptionForm(function (Schema $schema) use ($field) {
+                        $targetCollectionKey = $field['target_collection_key'] ?? null;
+                        if (! $targetCollectionKey) {
+                            return $schema;
+                        }
+
+                        $targetCollectionConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
+
+                        if (! $targetCollectionConfig) {
+                            return $schema;
+                        }
+
+                        return $schema->schema($this->getFieldsFromSchema($targetCollectionConfig->schema, $targetCollectionConfig->id));
+                    })
+                    ->createOptionUsing(function (array $data) use ($field) {
+                        $targetCollectionKey = $field['target_collection_key'] ?? null;
+                        $targetCollectionConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
+
+                        $record = CollectionData::create([
+                            'collection_config_id' => $targetCollectionConfig->id,
+                            'payload' => array_merge($data['payload'] ?? $data, ['uuid' => Str::uuid()->toString()]),
+                        ]);
+
+                        return $record->payload['uuid'];
+                    }),
+                default => Forms\Components\TextInput::make($fieldName),
+            };
+
+            $component = $component
+                ->label($label)
+                ->required($required)
+                ->default($default)
+                ->helperText($hint);
+
+            if ($unique && $configId) {
+                $component = $component->unique(
+                    table: CollectionData::class,
+                    column: "payload->{$name}",
+                    ignorable: fn ($record) => $record instanceof \A21ns1g4ts\FilamentCollections\Models\CollectionData ? $record : null,
+                    modifyRuleUsing: function (Unique $rule, $record, $component) use ($name, $configId) {
+                        $inputValue = $component->getState();
+                        $uuid = $record?->payload['uuid'] ?? null;
+
+                        $rule = $rule->where('collection_config_id', $configId)
+                            ->where("payload->{$name}", $inputValue);
+
+                        if ($uuid) {
+                            $rule = $rule->where('payload->uuid', '!=', $uuid);
+                        }
+
+                        return $rule;
+                    }
+                );
+            }
+
+            return $component;
+        })
+            ->filter()
+            ->values();
+
+        if ($prefix === 'payload') {
+            $fields = $fields->prepend(
+                Forms\Components\TextInput::make("{$prefix}.uuid")
+                    ->default(Str::uuid()->toString())
+                    ->disabled()
+                    ->dehydrated()
+                    ->label('UUID')
+                    ->required()
+            );
+        }
+
+        return $fields->all();
     }
 
     public function table(Table $table): Table
@@ -144,9 +180,15 @@ class DataRelationManager extends RelationManager
 
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('payload.uuid')
+                    ->label('UUID')
+                    ->searchable()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 ...collect($schema)->map(function ($field) {
                     $name = $field['name'] ?? null;
 

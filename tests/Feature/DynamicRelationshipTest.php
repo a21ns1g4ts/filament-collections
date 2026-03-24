@@ -113,6 +113,57 @@ it('can resolve hasMany relationships dynamically', function () {
         ->and($relatedPosts->pluck('payload.title'))->toContain('First post by Jane', 'Second post by Jane');
 });
 
+it('can resolve hasOne relationships dynamically', function () {
+    // Arrange: Create collection configurations
+    $userConfig = CollectionConfig::factory()->create([
+        'key' => 'users',
+        'schema' => [
+            ['name' => 'name', 'type' => 'text'],
+            [
+                'name' => 'profile',
+                'type' => 'collection',
+                'relationship_type' => 'hasOne',
+                'target_collection_key' => 'profiles',
+                'foreign_key_on_target' => 'user_uuid',
+            ],
+        ],
+    ]);
+
+    $profileConfig = CollectionConfig::factory()->create([
+        'key' => 'profiles',
+        'schema' => [
+            ['name' => 'bio', 'type' => 'text'],
+            ['name' => 'user_uuid', 'type' => 'text'],
+        ],
+    ]);
+
+    // Arrange: Create data
+    $userData = CollectionData::factory()->create([
+        'collection_config_id' => $userConfig->id,
+        'payload' => [
+            'uuid' => 'user-uuid-1',
+            'name' => 'John Profile',
+        ],
+    ]);
+
+    $profileData = CollectionData::factory()->create([
+        'collection_config_id' => $profileConfig->id,
+        'payload' => [
+            'uuid' => 'profile-uuid-1',
+            'bio' => 'A short bio',
+            'user_uuid' => 'user-uuid-1',
+        ],
+    ]);
+
+    // Act: Access the dynamic relationship
+    $profile = $userData->profile;
+
+    // Assert
+    expect($profile)->toBeInstanceOf(CollectionData::class)
+        ->and($profile->id)->toBe($profileData->id)
+        ->and($profile->payload['bio'])->toBe('A short bio');
+});
+
 it('can resolve belongsToMany relationships dynamically', function () {
     // Arrange: Create collection configurations
     $reviewerConfig = CollectionConfig::factory()->create([
@@ -162,6 +213,59 @@ it('can resolve belongsToMany relationships dynamically', function () {
     expect($relatedReviewers)->toBeInstanceOf(\Illuminate\Database\Eloquent\Collection::class)
         ->and($relatedReviewers->count())->toBe(2)
         ->and($relatedReviewers->pluck('payload.name'))->toContain('Jane Smith', 'Peter Jones');
+});
+
+it('returns null for missing target configuration key', function () {
+    $config = CollectionConfig::factory()->create([
+        'key' => 'broken',
+        'schema' => [
+            [
+                'name' => 'something',
+                'type' => 'collection',
+                'relationship_type' => 'belongsTo',
+                'target_collection_key' => 'non-existent',
+            ],
+        ],
+    ]);
+
+    $data = CollectionData::factory()->create([
+        'collection_config_id' => $config->id,
+        'payload' => ['something' => 'uuid'],
+    ]);
+
+    expect($data->something)->toBeNull();
+});
+
+it('returns null for missing relationship payload value', function () {
+    $authorConfig = CollectionConfig::factory()->create(['key' => 'author_missing']);
+    $config = CollectionConfig::factory()->create([
+        'key' => 'posts_missing',
+        'schema' => [
+            [
+                'name' => 'author',
+                'type' => 'collection',
+                'relationship_type' => 'belongsTo',
+                'target_collection_key' => 'author_missing',
+            ],
+        ],
+    ]);
+
+    $data = CollectionData::factory()->create([
+        'collection_config_id' => $config->id,
+        'payload' => [], // Author is missing from payload
+    ]);
+
+    expect($data->author)->toBeNull();
+});
+
+it('returns parent attribute for unknown property', function () {
+    $config = CollectionConfig::factory()->create(['key' => 'test']);
+    $data = CollectionData::factory()->create([
+        'collection_config_id' => $config->id,
+        'payload' => ['title' => 'Test'],
+    ]);
+
+    expect($data->non_existent_property)->toBeNull();
 });
 
 it('database has collection_configs table', function () {

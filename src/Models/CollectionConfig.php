@@ -28,8 +28,8 @@ class CollectionConfig extends Model
         return $this->hasMany(CollectionData::class, 'collection_config_id');
     }
 
-    public function apis()
+    public function apis(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->hasMany(CollectionApi::class);
+        return $this->belongsToMany(CollectionApi::class, 'collection_api_configs');
     }
 }

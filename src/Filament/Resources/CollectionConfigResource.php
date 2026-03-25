@@ -29,11 +29,15 @@ use Filament\Actions\EditAction;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 
+use A21ns1g4ts\FilamentCollections\Filament\Clusters\Collections;
+
 class CollectionConfigResource extends Resource
 {
     protected static ?string $model = CollectionConfig::class;
 
-    protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-inbox-stack';
+    protected static ?string $cluster = Collections::class;
+
+    protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
     public static function getNavigationLabel(): string
     {
@@ -366,7 +370,6 @@ class CollectionConfigResource extends Resource
     {
         return [
             DataRelationManager::class,
-            ApisRelationManager::class,
         ];
     }
 

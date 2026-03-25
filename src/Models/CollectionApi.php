@@ -12,15 +12,14 @@ class CollectionApi extends Model
     use HasFactory;
 
     protected $fillable = [
-        'collection_config_id',
         'personal_access_token_id',
         'name',
         'active',
     ];
 
-    public function config(): BelongsTo
+    public function configs(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->belongsTo(CollectionConfig::class);
+        return $this->belongsToMany(CollectionConfig::class, 'collection_api_configs');
     }
 
     public function token()

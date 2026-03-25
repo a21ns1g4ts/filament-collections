@@ -159,8 +159,9 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     protected function getMigrations(): array
     {
         return [
-            'create_collection_configs_table',
-            'create_collections_data_table',
+            'create_collections_config_table',
+            'create_collection_data_table',
+            'create_collection_apis_table',
         ];
     }
 }

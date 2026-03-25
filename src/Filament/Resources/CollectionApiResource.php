@@ -47,6 +47,12 @@ class CollectionApiResource extends Resource
                         ->label('Collections')
                         ->preload()
                         ->searchable(),
+                    Select::make('groups')
+                        ->relationship('groups', 'name')
+                        ->multiple()
+                        ->label('Groups')
+                        ->preload()
+                        ->searchable(),
                     Toggle::make('active')
                         ->default(true),
                 ])

@@ -22,6 +22,11 @@ class CollectionApi extends Model
         return $this->belongsToMany(CollectionConfig::class, 'collection_api_configs');
     }
 
+    public function groups(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(CollectionGroup::class, 'collection_api_groups');
+    }
+
     public function token()
     {
         return $this->belongsTo(PersonalAccessToken::class, 'personal_access_token_id');

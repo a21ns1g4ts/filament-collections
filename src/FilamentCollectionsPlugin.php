@@ -15,8 +15,14 @@ class FilamentCollectionsPlugin implements Plugin
     public function register(Panel $panel): void
     {
         $panel->resources([
-            Filament\Resources\CollectionConfigResource::class,
-        ]);
+            \A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource::class,
+            \A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionGroupResource::class,
+            \A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionApiResource::class,
+        ])
+        ->discoverClusters(
+            in: __DIR__ . '/Filament/Clusters',
+            for: 'A21ns1g4ts\\FilamentCollections\\Filament\\Clusters'
+        );
     }
 
     public function boot(Panel $panel): void

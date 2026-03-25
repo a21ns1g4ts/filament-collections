@@ -3,6 +3,7 @@
 namespace A21ns1g4ts\FilamentCollections;
 
 use A21ns1g4ts\FilamentCollections\Commands\FilamentCollectionsCommand;
+use A21ns1g4ts\FilamentCollections\Commands\SeedCollectionsCommand;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 use A21ns1g4ts\FilamentCollections\Observers\CollectionConfigObserver;
@@ -124,6 +125,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     {
         return [
             FilamentCollectionsCommand::class,
+            SeedCollectionsCommand::class,
         ];
     }
 
@@ -162,6 +164,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
             'create_collections_config_table',
             'create_collection_data_table',
             'create_collection_apis_table',
+            'create_collection_groups_table',
         ];
     }
 }

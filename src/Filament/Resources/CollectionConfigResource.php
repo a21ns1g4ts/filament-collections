@@ -30,12 +30,17 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 
 use A21ns1g4ts\FilamentCollections\Filament\Clusters\Collections;
+use UnitEnum;
 
 class CollectionConfigResource extends Resource
 {
     protected static ?string $model = CollectionConfig::class;
 
     protected static ?string $cluster = Collections::class;
+
+    // protected static string|UnitEnum|null $navigationGroup = 'Collections';
+
+    protected static ?string $navigationParentItem = 'Groups';
 
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
@@ -57,9 +62,17 @@ class CollectionConfigResource extends Resource
     public static function form(Schema $form): Schema
     {
         return $form->schema([
-            Section::make(__('filament-collections::default.form.identification'))
-                ->columns(2)
+            Section::make(__('filament-collections::default.sections.general'))
+                ->columns(['default' => 5])
                 ->schema([
+                    Select::make('collection_group_id')
+                        ->relationship('group', 'name')
+                        ->label('Group')
+                        ->searchable()
+                        ->preload()
+                        ->nullable()
+                        ->columnSpan(2),
+
                     TextInput::make('key')
                         ->label(__('filament-collections::default.fields.key'))
                         ->helperText(__('filament-collections::default.fields.key_help'))
@@ -68,15 +81,15 @@ class CollectionConfigResource extends Resource
                         ->maxLength(50)
                         ->regex('/^[a-z_]+$/')
                         ->unique(CollectionConfig::class, 'key', ignoreRecord: true)
-                        ->disabled(fn ($operation) => $operation === 'edit')
-                        ->columnSpan(2),
+                        ->disabled(fn($operation) => $operation === 'edit')
+                        ->columnSpan(3),
 
                     Textarea::make('description')
                         ->label(__('filament-collections::default.fields.description'))
                         ->rows(2)
                         ->maxLength(255)
                         ->nullable()
-                        ->columnSpan(2),
+                        ->columnSpanFull(),
 
                     Select::make('title_field')
                         ->label('Title Field')
@@ -91,7 +104,7 @@ class CollectionConfigResource extends Resource
                         })
                         ->required()
                         ->reactive()
-                        ->columnSpan(2),
+                        ->columnSpanFull(),
                 ]),
 
             Section::make(__('filament-collections::default.form.fields_section'))
@@ -125,7 +138,7 @@ class CollectionConfigResource extends Resource
                                     ->required()
                                     ->reactive(),
 
-                                 TextInput::make('name')
+                                TextInput::make('name')
                                     ->label(__('filament-collections::default.fields.name'))
                                     ->required()
                                     ->maxLength(50)
@@ -134,7 +147,7 @@ class CollectionConfigResource extends Resource
                                     ->debounce(500)
                                     // Validação para nome único dentro do repeater
                                     ->rules([
-                                        fn ($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
+                                        fn($get, $state, $livewire) => function (string $attribute, $value, Closure $fail) use ($get, $livewire) {
                                             if ($value === 'uuid') {
                                                 $fail("O nome 'uuid' é reservado pelo sistema.");
                                             }
@@ -143,7 +156,7 @@ class CollectionConfigResource extends Resource
                                             $currentFieldUuid = $livewire->currentlyOpenRepeaterItems[$attribute] ?? null; // Obtém o UUID do item atual, se disponível
 
                                             $count = collect($currentRepeaterItems)
-                                                ->filter(fn ($item, $uuid) => ($item['name'] ?? null) === $value && $uuid !== $currentFieldUuid)
+                                                ->filter(fn($item, $uuid) => ($item['name'] ?? null) === $value && $uuid !== $currentFieldUuid)
                                                 ->count();
 
                                             if ($count > 1) {
@@ -206,8 +219,8 @@ class CollectionConfigResource extends Resource
                                     )
                                     ->required()
                                     ->reactive()
-                                    ->visible(fn ($get) => $get('type') === 'collection')
-                                    ->createOptionForm(fn (Schema $schema) => static::form($schema))
+                                    ->visible(fn($get) => $get('type') === 'collection')
+                                    ->createOptionForm(fn(Schema $schema) => static::form($schema))
                                     ->createOptionUsing(function (array $data) {
                                         return CollectionConfig::create($data)->key;
                                     }),
@@ -231,7 +244,7 @@ class CollectionConfigResource extends Resource
                                             ->toArray();
                                     })
                                     ->searchable()
-                                    ->visible(fn ($get) => in_array($get('relationship_type'), ['hasMany', 'hasOne'])),
+                                    ->visible(fn($get) => in_array($get('relationship_type'), ['hasMany', 'hasOne'])),
 
                                 Select::make('on_delete')
                                     ->label('Comportamento ao Deletar')
@@ -243,7 +256,7 @@ class CollectionConfigResource extends Resource
                                     ->default('restrict')
                                     ->required(),
                             ])
-                                ->visible(fn ($get) => $get('type') === 'collection'),
+                                ->visible(fn($get) => $get('type') === 'collection'),
 
                             Group::make()->columns(8)->schema([
                                 Toggle::make('required')
@@ -257,6 +270,26 @@ class CollectionConfigResource extends Resource
                                     ->default(false)
                                     ->inline(false)
                                     ->columnSpan(1),
+
+                                Toggle::make('sluggable')
+                                    ->label('Gera Slug')
+                                    ->reactive()
+                                    ->visible(fn($get) => $get('type') === 'text')
+                                    ->columnSpan(1),
+
+                                Select::make('slug_source')
+                                    ->label('Campo Origem')
+                                    ->options(function ($get) {
+                                        $schema = $get('../../schema') ?? [];
+
+                                        return collect($schema)
+                                            ->filter(fn($field) => ($field['name'] ?? null) && ($field['name'] ?? null) !== ($get('name') ?? null))
+                                            ->pluck('name', 'name')
+                                            ->toArray();
+                                    })
+                                    ->required(fn($get) => $get('sluggable'))
+                                    ->visible(fn($get) => $get('sluggable') && $get('type') === 'text')
+                                    ->columnSpan(2),
 
                                 TextInput::make('default')
                                     ->label(__('filament-collections::default.fields.default'))

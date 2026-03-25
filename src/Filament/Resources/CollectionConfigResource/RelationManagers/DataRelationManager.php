@@ -37,13 +37,16 @@ class DataRelationManager extends RelationManager
         return $form->schema([
             Section::make('Preenchimento dos Campos')
                 ->description('Complete os dados da coleção conforme o schema configurado.')
+                ->columnSpanFull()
                 ->schema($this->getFieldsFromSchema($schema, $this->ownerRecord->id)),
         ]);
     }
 
     protected function getFieldsFromSchema(array $schema, ?int $configId = null, string $prefix = 'payload'): array
     {
-        $fields = collect($schema)->map(function ($field) use ($configId, $prefix) {
+        $sluggableFields = collect($schema)->filter(fn($f) => $f['sluggable'] ?? false);
+
+        $fields = collect($schema)->map(function ($field) use ($configId, $prefix, $sluggableFields) {
             $name = $field['name'] ?? null;
 
             if (! $name || $name === 'uuid') {
@@ -63,7 +66,7 @@ class DataRelationManager extends RelationManager
                 'text' => Forms\Components\TextInput::make($fieldName),
                 'textarea' => Forms\Components\Textarea::make($fieldName),
                 'select' => Forms\Components\Select::make($fieldName)
-                    ->options(fn () => collect(explode("\n", $field['options'] ?? ''))
+                    ->options(fn() => collect(explode("\n", $field['options'] ?? ''))
                         ->mapWithKeys(function ($line) {
                             $line = trim($line);
 
@@ -94,11 +97,11 @@ class DataRelationManager extends RelationManager
 
                         return CollectionData::where('collection_config_id', $targetCollectionConfig->id)
                             ->get()
-                            ->pluck('payload.'.$targetCollectionTitle, 'payload.uuid')
+                            ->pluck('payload.' . $targetCollectionTitle, 'payload.uuid')
                             ->toArray();
                     })
-                    ->multiple(fn () => ($field['relationship_type'] ?? 'belongsTo') === 'belongsToMany')
-                    ->visible(fn () => in_array($field['relationship_type'] ?? 'belongsTo', ['belongsTo', 'belongsToMany']))
+                    ->multiple(fn() => ($field['relationship_type'] ?? 'belongsTo') === 'belongsToMany')
+                    ->visible(fn() => in_array($field['relationship_type'] ?? 'belongsTo', ['belongsTo', 'belongsToMany']))
                     ->searchable()
                     ->createOptionForm(function (Schema $schema) use ($field) {
                         $targetCollectionKey = $field['target_collection_key'] ?? null;
@@ -132,13 +135,24 @@ class DataRelationManager extends RelationManager
                 ->label($label)
                 ->required($required)
                 ->default($default)
-                ->helperText($hint);
+                ->helperText($hint)
+                ->columnSpanFull();
+
+            // Lógica de Slug
+            $targets = $sluggableFields->where('slug_source', $name);
+            if ($targets->isNotEmpty()) {
+                $component = $component->live()->afterStateUpdated(function ($set, $state) use ($targets, $prefix) {
+                    foreach ($targets as $target) {
+                        $set("{$prefix}.{$target['name']}", Str::slug($state));
+                    }
+                });
+            }
 
             if ($unique && $configId) {
                 $component = $component->unique(
                     table: CollectionData::class,
                     column: "payload->{$name}",
-                    ignorable: fn ($record) => $record instanceof \A21ns1g4ts\FilamentCollections\Models\CollectionData ? $record : null,
+                    ignorable: fn($record) => $record instanceof \A21ns1g4ts\FilamentCollections\Models\CollectionData ? $record : null,
                     modifyRuleUsing: function (Unique $rule, $record, $component) use ($name, $configId) {
                         $inputValue = $component->getState();
                         $uuid = $record?->payload['uuid'] ?? null;
@@ -168,6 +182,7 @@ class DataRelationManager extends RelationManager
                     ->dehydrated()
                     ->label('UUID')
                     ->required()
+                    ->columnSpanFull()
             );
         }
 

@@ -6,4 +6,5 @@ use Filament\Clusters\Cluster;
 
 class Collections extends Cluster
 {
+    protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-squares-2x2';
 }

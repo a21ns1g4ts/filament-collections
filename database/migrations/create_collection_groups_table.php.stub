@@ -1,0 +1,39 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('collection_groups', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('key')->unique();
+            $table->text('description')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::table('collection_configs', function (Blueprint $table) {
+            $table->foreignId('collection_group_id')->nullable()->constrained()->nullOnDelete();
+        });
+
+        Schema::create('collection_api_groups', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('collection_api_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('collection_group_id')->constrained()->cascadeOnDelete();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('collection_api_groups');
+        Schema::table('collection_configs', function (Blueprint $table) {
+            $table->dropForeign(['collection_group_id']);
+            $table->dropColumn('collection_group_id');
+        });
+        Schema::dropIfExists('collection_groups');
+    }
+};

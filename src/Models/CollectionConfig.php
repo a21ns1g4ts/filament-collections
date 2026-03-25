@@ -16,12 +16,18 @@ class CollectionConfig extends Model
         'title_field',
         'schema',
         'ui_schema',
+        'collection_group_id',
     ];
 
     protected $casts = [
         'schema' => 'array',
         'ui_schema' => 'array',
     ];
+
+    public function group(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(CollectionGroup::class, 'collection_group_id');
+    }
 
     public function data(): HasMany
     {

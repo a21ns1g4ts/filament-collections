@@ -52,6 +52,10 @@ class CollectionDataController extends Controller
         }
 
         $payload = $validator->validated()['payload'];
+        
+        // Server-side slug generation if enabled and missing
+        $payload = $this->applySluggableData($config, $payload);
+        
         $payload['uuid'] = Str::uuid()->toString();
 
         $record = CollectionData::create([
@@ -89,6 +93,10 @@ class CollectionDataController extends Controller
         }
 
         $payload = $validator->validated()['payload'];
+        
+        // Server-side slug generation if enabled
+        $payload = $this->applySluggableData($config, $payload);
+        
         $currentPayload = $record->payload;
 
         foreach ($payload as $key => $value) {
@@ -101,6 +109,27 @@ class CollectionDataController extends Controller
         $record->save();
 
         return response()->json($record);
+    }
+
+    protected function applySluggableData(CollectionConfig $config, array $payload): array
+    {
+        $schema = is_string($config->schema) ? json_decode($config->schema, true) : $config->schema;
+
+        if (is_array($schema)) {
+            foreach ($schema as $field) {
+                if (($field['sluggable'] ?? false) && ($field['slug_source'] ?? false)) {
+                    $targetField = $field['name'];
+                    $sourceField = $field['slug_source'];
+
+                    // Only generate slug if target is empty or not in payload, but source is available
+                    if (empty($payload[$targetField]) && ! empty($payload[$sourceField])) {
+                        $payload[$targetField] = Str::slug($payload[$sourceField]);
+                    }
+                }
+            }
+        }
+
+        return $payload;
     }
 
     public function destroy(string $collectionKey, string $id)
@@ -131,11 +160,16 @@ class CollectionDataController extends Controller
 
     protected function getValidationRules(CollectionConfig $config, ?int $recordId = null): array
     {
-        $rules = ['payload' => ['required', 'array']];
+        $rules = [
+            'payload' => ['required', 'array'],
+        ];
 
-        if (is_array($config->schema) && isset($config->schema['properties'])) {
-            foreach ($config->schema['properties'] as $fieldName => $field) {
-                if ($fieldName === 'uuid') {
+        $schema = is_string($config->schema) ? json_decode($config->schema, true) : $config->schema;
+
+        if (is_array($schema)) {
+            foreach ($schema as $field) {
+                $fieldName = $field['name'] ?? null;
+                if (! $fieldName || $fieldName === 'uuid') {
                     continue;
                 }
 
@@ -149,14 +183,18 @@ class CollectionDataController extends Controller
                 }
 
                 if (isset($field['unique']) && $field['unique']) {
-                    $uniqueRule = Rule::unique('collection_data', "payload->{$fieldName}");
+                    $uniqueRule = Rule::unique('collection_data', "payload->{$fieldName}")
+                        ->where('collection_config_id', $config->id);
+
                     if ($recordId) {
                         $uniqueRule->ignore($recordId);
                     }
                     $fieldRules[] = $uniqueRule;
                 }
 
-                switch ($field['type']) {
+                $type = $field['type'] ?? 'text';
+
+                switch ($type) {
                     case 'number':
                         $fieldRules[] = 'numeric';
                         break;
@@ -171,6 +209,13 @@ class CollectionDataController extends Controller
                         break;
                     case 'json':
                         $fieldRules[] = 'array';
+                        break;
+                    case 'collection':
+                        if (in_array(($field['relationship_type'] ?? ''), ['hasMany', 'belongsToMany'])) {
+                            $fieldRules[] = 'array';
+                        } else {
+                            $fieldRules[] = 'string'; // UUID
+                        }
                         break;
                     default:
                         $fieldRules[] = 'string';

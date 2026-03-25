@@ -154,3 +154,56 @@ it('can delete a record', function () {
 
     $this->assertDatabaseMissing('collection_data', ['id' => $record->id]);
 });
+
+it('enforces validation rules defined in collection config', function () {
+    $config = CollectionConfig::factory()->create([
+        'key' => 'products',
+        'schema' => [
+            ['name' => 'name', 'type' => 'text', 'required' => true],
+            ['name' => 'price', 'type' => 'number', 'required' => true],
+            ['name' => 'sku', 'type' => 'text', 'unique' => true],
+        ]
+    ]);
+
+    // Missing required fields
+    $this->postJson("/api/collections/{$config->key}", ['payload' => []])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['payload.name', 'payload.price']);
+
+    // Duplicate unique field
+    CollectionData::factory()->create([
+        'collection_config_id' => $config->id,
+        'payload' => ['name' => 'Product 1', 'price' => 10, 'sku' => 'SKU-001']
+    ]);
+
+    $this->postJson("/api/collections/{$config->key}", [
+        'payload' => ['name' => 'Product 2', 'price' => 20, 'sku' => 'SKU-001']
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['payload.sku']);
+});
+
+it('automatically generates slugs based on collection config', function () {
+    $config = CollectionConfig::factory()->create([
+        'key' => 'posts',
+        'schema' => [
+            ['name' => 'title', 'type' => 'text', 'required' => true],
+            ['name' => 'slug', 'type' => 'text', 'sluggable' => true, 'slug_source' => 'title'],
+        ]
+    ]);
+
+    $payload = [
+        'payload' => [
+            'title' => 'My Awesome Post'
+        ]
+    ];
+
+    $this->postJson("/api/collections/{$config->key}", $payload)
+        ->assertStatus(201)
+        ->assertJsonPath('payload.slug', 'my-awesome-post');
+
+    $this->assertDatabaseHas('collection_data', [
+        'collection_config_id' => $config->id,
+        'payload->slug' => 'my-awesome-post'
+    ]);
+});

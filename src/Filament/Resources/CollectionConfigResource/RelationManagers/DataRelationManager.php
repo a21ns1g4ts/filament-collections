@@ -138,14 +138,16 @@ class DataRelationManager extends RelationManager
                 ->helperText($hint)
                 ->columnSpanFull();
 
-            // Lógica de Slug
+            // Lógica de Slug em JS (evita requisições ao servidor)
             $targets = $sluggableFields->where('slug_source', $name);
             if ($targets->isNotEmpty()) {
-                $component = $component->live()->afterStateUpdated(function ($set, $state) use ($targets, $prefix) {
-                    foreach ($targets as $target) {
-                        $set("{$prefix}.{$target['name']}", Str::slug($state));
-                    }
-                });
+                $jsLogic = '';
+                foreach ($targets as $target) {
+                    $targetPath = "{$prefix}.{$target['name']}";
+                    $jsLogic .= "\$set('{$targetPath}', (\$state ?? '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^\\w\\s-]/g, '').replace(/[\\s_-]+/g, '-').replace(/^-+|-+$/g, ''));";
+                }
+                
+                $component = $component->afterStateUpdatedJs($jsLogic);
             }
 
             if ($unique && $configId) {

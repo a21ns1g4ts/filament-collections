@@ -25,6 +25,16 @@ class CollectionApiResource extends Resource
 
     protected static ?string $cluster = Collections::class;
 
+    public static function getModelLabel(): string
+    {
+        return __('filament-collections::default.resources.api.label');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('filament-collections::default.resources.api.plural');
+    }
+
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-key';
 
     public static function form(Schema $form): Schema

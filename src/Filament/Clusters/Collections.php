@@ -7,4 +7,9 @@ use Filament\Clusters\Cluster;
 class Collections extends Cluster
 {
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-squares-2x2';
+
+    public static function getNavigationLabel(): string
+    {
+        return __('filament-collections::default.navigationLabel');
+    }
 }

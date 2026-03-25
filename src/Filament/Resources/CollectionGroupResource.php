@@ -25,7 +25,15 @@ class CollectionGroupResource extends Resource
 
     protected static ?string $cluster = Collections::class;
 
-    protected static ?string $navigationLabel = 'Groups';
+    public static function getModelLabel(): string
+    {
+        return __('filament-collections::default.resources.group.label');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('filament-collections::default.resources.group.plural');
+    }
 
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-folder';
 

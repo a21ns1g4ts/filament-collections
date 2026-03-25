@@ -9,6 +9,7 @@ use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\P
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\ApisRelationManager;
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\DataRelationManager;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionGroupResource;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
@@ -38,11 +39,13 @@ class CollectionConfigResource extends Resource
 
     protected static ?string $cluster = Collections::class;
 
-    // protected static string|UnitEnum|null $navigationGroup = 'Collections';
-
-    protected static ?string $navigationParentItem = 'Groups';
-
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-rectangle-stack';
+
+    public static function getNavigationParentItem(): ?string
+    {
+        // not work __('filament-collections::default.resources.group.plural')
+        return 'Grupos De Coleções';
+    }
 
     public static function getNavigationLabel(): string
     {
@@ -62,8 +65,10 @@ class CollectionConfigResource extends Resource
     public static function form(Schema $form): Schema
     {
         return $form->schema([
+
             Section::make(__('filament-collections::default.sections.general'))
-                ->columns(['default' => 5])
+                ->columns(['default' => 3])
+                ->columnSpanFull()
                 ->schema([
                     Select::make('collection_group_id')
                         ->relationship('group', 'name')
@@ -71,7 +76,7 @@ class CollectionConfigResource extends Resource
                         ->searchable()
                         ->preload()
                         ->nullable()
-                        ->columnSpan(2),
+                        ->columnSpan(1),
 
                     TextInput::make('key')
                         ->label(__('filament-collections::default.fields.key'))
@@ -82,14 +87,7 @@ class CollectionConfigResource extends Resource
                         ->regex('/^[a-z_]+$/')
                         ->unique(CollectionConfig::class, 'key', ignoreRecord: true)
                         ->disabled(fn($operation) => $operation === 'edit')
-                        ->columnSpan(3),
-
-                    Textarea::make('description')
-                        ->label(__('filament-collections::default.fields.description'))
-                        ->rows(2)
-                        ->maxLength(255)
-                        ->nullable()
-                        ->columnSpanFull(),
+                        ->columnSpan(1),
 
                     Select::make('title_field')
                         ->label('Title Field')
@@ -104,11 +102,19 @@ class CollectionConfigResource extends Resource
                         })
                         ->required()
                         ->reactive()
+                        ->columnSpan(1),
+
+                    Textarea::make('description')
+                        ->label(__('filament-collections::default.fields.description'))
+                        ->rows(2)
+                        ->maxLength(255)
+                        ->nullable()
                         ->columnSpanFull(),
                 ]),
 
             Section::make(__('filament-collections::default.form.fields_section'))
                 ->description(__('filament-collections::default.form.fields_description'))
+                ->columnSpanFull()
                 ->schema([
                     Repeater::make('schema')
                         ->label(__('filament-collections::default.fields.fields'))
@@ -274,6 +280,7 @@ class CollectionConfigResource extends Resource
                                 Toggle::make('sluggable')
                                     ->label('Gera Slug')
                                     ->reactive()
+                                    ->inline(false)
                                     ->visible(fn($get) => $get('type') === 'text')
                                     ->columnSpan(1),
 
@@ -289,52 +296,52 @@ class CollectionConfigResource extends Resource
                                     })
                                     ->required(fn($get) => $get('sluggable'))
                                     ->visible(fn($get) => $get('sluggable') && $get('type') === 'text')
-                                    ->columnSpan(2),
+                                    ->columnSpan(5),
 
                                 TextInput::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->default(null)
-                                    ->visible(fn($get) => ! in_array($get('type'), ['select', 'json', 'number', 'boolean', 'datetime', 'date', 'color']))
-                                    ->columnSpan(2),
+                                    ->visible(fn($get) => ! in_array($get('type'), ['select', 'json', 'number', 'boolean', 'datetime', 'date', 'color', 'collection']))
+                                    ->columnSpan(4),
 
                                 ColorPicker::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->visible(fn($get) => $get('type') === 'color')
-                                    ->columnSpan(2),
+                                    ->columnSpan(4),
 
                                 JsonColumn::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->editorOnly()
                                     ->visible(fn($get) => $get('type') === 'json')
-                                    ->columnSpanFull(2),
+                                    ->columnSpan(4),
 
                                 TextInput::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->numeric()
                                     ->visible(fn($get) => $get('type') === 'number')
-                                    ->columnSpan(2),
+                                    ->columnSpan(4),
 
                                 DateTimePicker::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->visible(fn($get) => $get('type') === 'datetime')
-                                    ->columnSpan(2),
+                                    ->columnSpan(4),
 
                                 DatePicker::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->visible(fn($get) => $get('type') === 'date')
-                                    ->columnSpan(2),
+                                    ->columnSpan(4),
 
                                 ToggleNullable::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
                                     ->visible(fn($get) => $get('type') === 'boolean')
-                                    ->columnSpan(2),
+                                    ->columnSpan(4),
 
                                 Select::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
@@ -348,7 +355,7 @@ class CollectionConfigResource extends Resource
                                                 : [$line => $line];
                                         })->toArray())
                                     ->visible(fn($get) => $get('type') === 'select')
-                                    ->columnSpan(2),
+                                    ->columnSpan(4),
 
                                 TextInput::make('hint')
                                     ->label(__('filament-collections::default.fields.hint'))

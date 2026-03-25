@@ -36,6 +36,25 @@ return [
         'created_at' => 'Criado em',
     ],
 
+    'sections' => [
+        'general' => 'Geral',
+    ],
+
+    'resources' => [
+        'group' => [
+            'label' => 'Grupo de Coleções',
+            'plural' => 'Grupos de Coleções',
+        ],
+        'config' => [
+            'label' => 'Configuração',
+            'plural' => 'Configurações',
+        ],
+        'api' => [
+            'label' => "Api's",
+            'plural' => "Api's",
+        ],
+    ],
+
     'types' => [
         'text' => 'Texto',
         'textarea' => 'Área de Texto',

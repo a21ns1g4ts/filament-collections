@@ -24,11 +24,15 @@ trait HasDynamicRelationships
                     $relatedModel = self::class;
                     $targetCollectionKey = $field['target_collection_key'] ?? null;
 
-                    if (!$targetCollectionKey) continue;
+                    if (! $targetCollectionKey) {
+                        continue;
+                    }
 
                     $targetConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
 
-                    if (!$targetConfig) continue;
+                    if (! $targetConfig) {
+                        continue;
+                    }
 
                     $result = null;
 
@@ -53,7 +57,7 @@ trait HasDynamicRelationships
                         }
                     } elseif ($relationshipType === 'belongsToMany') {
                         $foreignKeyValues = $this->payload[$field['name']] ?? [];
-                        if (is_array($foreignKeyValues) && !empty($foreignKeyValues)) {
+                        if (is_array($foreignKeyValues) && ! empty($foreignKeyValues)) {
                             $result = $relatedModel::where('collection_config_id', $targetConfig->id)
                                 ->whereIn('payload->uuid', $foreignKeyValues)
                                 ->get();
@@ -64,6 +68,7 @@ trait HasDynamicRelationships
 
                     if ($result !== null || in_array($relationshipType, ['hasMany', 'belongsToMany'])) {
                         $this->setRelation($key, $result);
+
                         return $result;
                     }
                 }

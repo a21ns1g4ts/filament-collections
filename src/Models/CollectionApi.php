@@ -4,7 +4,7 @@ namespace A21ns1g4ts\FilamentCollections\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class CollectionApi extends Model
@@ -17,12 +17,12 @@ class CollectionApi extends Model
         'active',
     ];
 
-    public function configs(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function configs(): BelongsToMany
     {
         return $this->belongsToMany(CollectionConfig::class, 'collection_api_configs');
     }
 
-    public function groups(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function groups(): BelongsToMany
     {
         return $this->belongsToMany(CollectionGroup::class, 'collection_api_groups');
     }

@@ -5,6 +5,7 @@ namespace A21ns1g4ts\FilamentCollections\Observers;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CollectionDataObserver
@@ -13,7 +14,7 @@ class CollectionDataObserver
     {
         $payload = $collectionData->payload;
         if (empty(Arr::get($payload, 'uuid'))) {
-            $payload['uuid'] = (string) \Illuminate\Support\Str::uuid();
+            $payload['uuid'] = (string) Str::uuid();
             $collectionData->payload = $payload;
         }
 
@@ -42,7 +43,7 @@ class CollectionDataObserver
 
             if ($query->exists()) {
                 throw ValidationException::withMessages([
-                    $foreignKeyName => 'This ' . Arr::get($field, 'target_collection_key') . ' is already assigned to another record.',
+                    $foreignKeyName => 'This '.Arr::get($field, 'target_collection_key').' is already assigned to another record.',
                 ]);
             }
         }
@@ -50,7 +51,7 @@ class CollectionDataObserver
 
     public function saved(CollectionData $collectionData): void
     {
-        if (!$collectionData->relationLoaded('config')) {
+        if (! $collectionData->relationLoaded('config')) {
             $collectionData->load('config');
         }
 
@@ -73,7 +74,7 @@ class CollectionDataObserver
             }
 
             $targetConfig = CollectionConfig::where('key', $targetCollectionKey)->first();
-            if (!$targetConfig) {
+            if (! $targetConfig) {
                 continue;
             }
 
@@ -109,7 +110,7 @@ class CollectionDataObserver
                 if (in_array($relationshipType, ['belongsTo', 'hasOne'])) {
                     // For belongsTo/hasOne, the inverse is hasMany/hasOne, so remove from array or unset
                     if (is_array($inverseValue)) {
-                        $inverseValue = array_values(array_filter($inverseValue, fn($id) => $id !== $sourceUuid));
+                        $inverseValue = array_values(array_filter($inverseValue, fn ($id) => $id !== $sourceUuid));
                         Arr::set($payload, $inverseRelationshipName, $inverseValue);
                     } else {
                         // If it's a single value and matches, unset it
@@ -142,7 +143,7 @@ class CollectionDataObserver
                     // For belongsTo/hasOne, the inverse is hasMany/hasOne, so add to array or set single value
                     $inverseValue = Arr::get($payload, $inverseRelationshipName);
                     if (is_array($inverseValue)) {
-                        if (!in_array($sourceUuid, $inverseValue)) {
+                        if (! in_array($sourceUuid, $inverseValue)) {
                             $inverseValue[] = $sourceUuid;
                             Arr::set($payload, $inverseRelationshipName, $inverseValue);
                         }

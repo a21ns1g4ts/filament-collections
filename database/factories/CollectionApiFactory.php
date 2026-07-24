@@ -5,7 +5,6 @@ namespace A21ns1g4ts\FilamentCollections\Database\Factories;
 use A21ns1g4ts\FilamentCollections\Models\CollectionApi;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Laravel\Sanctum\PersonalAccessToken;
 
 class CollectionApiFactory extends Factory
 {
@@ -23,7 +22,7 @@ class CollectionApiFactory extends Factory
     {
         return [
             'collection_config_id' => CollectionConfig::factory(),
-            'name' => $this->faker->unique()->words(2, true) . ' API',
+            'name' => $this->faker->unique()->words(2, true).' API',
             'active' => $this->faker->boolean(80),
         ];
     }

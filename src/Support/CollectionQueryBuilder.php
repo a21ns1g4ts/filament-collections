@@ -4,14 +4,15 @@ namespace A21ns1g4ts\FilamentCollections\Support;
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
-use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class CollectionQueryBuilder
 {
     protected Builder $query;
+
     protected CollectionConfig $config;
+
     protected Request $request;
 
     public function __construct(CollectionConfig $config, Request $request)
@@ -80,6 +81,7 @@ class CollectionQueryBuilder
                 return $field;
             }
         }
+
         return null;
     }
 }

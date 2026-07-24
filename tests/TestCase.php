@@ -16,6 +16,8 @@ use Filament\Tables\TablesServiceProvider;
 use Filament\Widgets\WidgetsServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
+use Laravel\Sanctum\SanctumServiceProvider;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\Concerns\WithWorkbench;
 use Orchestra\Testbench\TestCase as Orchestra;
@@ -31,16 +33,16 @@ class TestCase extends Orchestra
         parent::setUp();
 
         $this->loadLaravelMigrations();
-        $this->loadMigrationsFrom(__DIR__ . '/../vendor/laravel/sanctum/database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../vendor/laravel/sanctum/database/migrations');
 
         $this->artisan('migrate', ['--database' => 'testing'])->run();
 
-        foreach (\Illuminate\Support\Facades\File::allFiles(__DIR__ . '/../database/migrations') as $migration) {
+        foreach (File::allFiles(__DIR__.'/../database/migrations') as $migration) {
             (include $migration->getRealPath())->up();
         }
 
         Factory::guessFactoryNamesUsing(
-            fn(string $modelName) => 'A21ns1g4ts\\FilamentCollections\\Database\\Factories\\' . class_basename($modelName) . 'Factory'
+            fn (string $modelName) => 'A21ns1g4ts\\FilamentCollections\\Database\\Factories\\'.class_basename($modelName).'Factory'
         );
     }
 
@@ -60,7 +62,7 @@ class TestCase extends Orchestra
             TablesServiceProvider::class,
             WidgetsServiceProvider::class,
             FilamentCollectionsServiceProvider::class,
-            \Laravel\Sanctum\SanctumServiceProvider::class,
+            SanctumServiceProvider::class,
         ];
     }
 

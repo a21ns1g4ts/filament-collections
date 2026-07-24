@@ -2,6 +2,9 @@
 
 namespace A21ns1g4ts\FilamentCollections;
 
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionApiResource;
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource;
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionGroupResource;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
 
@@ -15,14 +18,14 @@ class FilamentCollectionsPlugin implements Plugin
     public function register(Panel $panel): void
     {
         $panel->resources([
-            \A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource::class,
-            \A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionGroupResource::class,
-            \A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionApiResource::class,
+            CollectionConfigResource::class,
+            CollectionGroupResource::class,
+            CollectionApiResource::class,
         ])
-        ->discoverClusters(
-            in: __DIR__ . '/Filament/Clusters',
-            for: 'A21ns1g4ts\\FilamentCollections\\Filament\\Clusters'
-        );
+            ->discoverClusters(
+                in: __DIR__.'/Filament/Clusters',
+                for: 'A21ns1g4ts\\FilamentCollections\\Filament\\Clusters'
+            );
     }
 
     public function boot(Panel $panel): void

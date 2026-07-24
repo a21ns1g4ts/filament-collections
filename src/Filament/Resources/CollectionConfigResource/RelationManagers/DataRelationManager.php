@@ -2,16 +2,16 @@
 
 namespace A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers;
 
-use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
@@ -44,7 +44,7 @@ class DataRelationManager extends RelationManager
 
     protected function getFieldsFromSchema(array $schema, ?int $configId = null, string $prefix = 'payload'): array
     {
-        $sluggableFields = collect($schema)->filter(fn($f) => $f['sluggable'] ?? false);
+        $sluggableFields = collect($schema)->filter(fn ($f) => $f['sluggable'] ?? false);
 
         $fields = collect($schema)->map(function ($field) use ($configId, $prefix, $sluggableFields) {
             $name = $field['name'] ?? null;
@@ -66,7 +66,7 @@ class DataRelationManager extends RelationManager
                 'text' => Forms\Components\TextInput::make($fieldName),
                 'textarea' => Forms\Components\Textarea::make($fieldName),
                 'select' => Forms\Components\Select::make($fieldName)
-                    ->options(fn() => collect(explode("\n", $field['options'] ?? ''))
+                    ->options(fn () => collect(explode("\n", $field['options'] ?? ''))
                         ->mapWithKeys(function ($line) {
                             $line = trim($line);
 
@@ -97,11 +97,11 @@ class DataRelationManager extends RelationManager
 
                         return CollectionData::where('collection_config_id', $targetCollectionConfig->id)
                             ->get()
-                            ->pluck('payload.' . $targetCollectionTitle, 'payload.uuid')
+                            ->pluck('payload.'.$targetCollectionTitle, 'payload.uuid')
                             ->toArray();
                     })
-                    ->multiple(fn() => ($field['relationship_type'] ?? 'belongsTo') === 'belongsToMany')
-                    ->visible(fn() => in_array($field['relationship_type'] ?? 'belongsTo', ['belongsTo', 'belongsToMany']))
+                    ->multiple(fn () => ($field['relationship_type'] ?? 'belongsTo') === 'belongsToMany')
+                    ->visible(fn () => in_array($field['relationship_type'] ?? 'belongsTo', ['belongsTo', 'belongsToMany']))
                     ->searchable()
                     ->createOptionForm(function (Schema $schema) use ($field) {
                         $targetCollectionKey = $field['target_collection_key'] ?? null;
@@ -146,7 +146,7 @@ class DataRelationManager extends RelationManager
                     $targetPath = "{$prefix}.{$target['name']}";
                     $jsLogic .= "\$set('{$targetPath}', (\$state ?? '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^\\w\\s-]/g, '').replace(/[\\s_-]+/g, '-').replace(/^-+|-+$/g, ''));";
                 }
-                
+
                 $component = $component->afterStateUpdatedJs($jsLogic);
             }
 
@@ -154,7 +154,7 @@ class DataRelationManager extends RelationManager
                 $component = $component->unique(
                     table: CollectionData::class,
                     column: "payload->{$name}",
-                    ignorable: fn($record) => $record instanceof \A21ns1g4ts\FilamentCollections\Models\CollectionData ? $record : null,
+                    ignorable: fn ($record) => $record instanceof CollectionData ? $record : null,
                     modifyRuleUsing: function (Unique $rule, $record, $component) use ($name, $configId) {
                         $inputValue = $component->getState();
                         $uuid = $record?->payload['uuid'] ?? null;
@@ -255,7 +255,7 @@ class DataRelationManager extends RelationManager
                                 if (is_array($state)) {
                                     $items = $query->whereIn('payload->uuid', $state)->get();
 
-                                    return $items->pluck('payload.' . $targetCollectionTitle)->implode(', ');
+                                    return $items->pluck('payload.'.$targetCollectionTitle)->implode(', ');
                                 }
 
                                 $item = $query->where('payload->uuid', $state)->first();

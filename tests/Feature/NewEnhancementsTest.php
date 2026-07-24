@@ -3,6 +3,7 @@
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 it('automatically generates a UUID for collection data item if missing', function () {
     $config = CollectionConfig::factory()->create([
@@ -12,7 +13,7 @@ it('automatically generates a UUID for collection data item if missing', functio
         ],
     ]);
 
-    $data = new CollectionData();
+    $data = new CollectionData;
     $data->collection_config_id = $config->id;
     $data->payload = ['name' => 'Test Item'];
     $data->save();
@@ -35,12 +36,12 @@ it('does not overwrite existing UUID on saving collection data', function () {
 
     $data->refresh();
     expect($data->payload['uuid'])->toBe($existingUuid);
-    
+
     $payload = $data->payload;
     $payload['name'] = 'Updated Name';
     $data->payload = $payload;
     $data->save();
-    
+
     $data->refresh();
     expect($data->payload['uuid'])->toBe($existingUuid);
 });
@@ -69,10 +70,10 @@ it('automatically generates foreign_key_on_target for hasMany relationships when
 
     $authorsConfig->refresh();
     $field = $authorsConfig->schema[0];
-    
+
     // authors singular + _uuid
     expect($field['foreign_key_on_target'])->toBe('author_uuid');
-    
+
     $postsConfig->refresh();
     // The inverse relationship should have been created with the auto-generated name
     $inverseField = collect($postsConfig->schema)->firstWhere('name', 'author_uuid');
@@ -104,9 +105,9 @@ it('automatically generates foreign_key_on_target for hasOne relationships when 
 
     $userConfig->refresh();
     $field = $userConfig->schema[0];
-    
+
     expect($field['foreign_key_on_target'])->toBe('user_uuid');
-    
+
     $profileConfig->refresh();
     $inverseField = collect($profileConfig->schema)->firstWhere('name', 'user_uuid');
     expect($inverseField)->not->toBeNull();
@@ -114,87 +115,87 @@ it('automatically generates foreign_key_on_target for hasOne relationships when 
 });
 
 it('restricts deletion if related records exist and on_delete is restrict', function () {
-    $authorsConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::factory()->create([
+    $authorsConfig = CollectionConfig::factory()->create([
         'key' => 'authors',
         'schema' => [
-            ['name' => 'posts', 'type' => 'collection', 'relationship_type' => 'hasMany', 'target_collection_key' => 'posts', 'on_delete' => 'restrict']
+            ['name' => 'posts', 'type' => 'collection', 'relationship_type' => 'hasMany', 'target_collection_key' => 'posts', 'on_delete' => 'restrict'],
         ],
     ]);
 
-    $postsConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::factory()->create([
+    $postsConfig = CollectionConfig::factory()->create([
         'key' => 'posts',
         'schema' => [
-            ['name' => 'author', 'type' => 'collection', 'relationship_type' => 'belongsTo', 'target_collection_key' => 'authors']
+            ['name' => 'author', 'type' => 'collection', 'relationship_type' => 'belongsTo', 'target_collection_key' => 'authors'],
         ],
     ]);
 
-    $author = \A21ns1g4ts\FilamentCollections\Models\CollectionData::factory()->create([
+    $author = CollectionData::factory()->create([
         'collection_config_id' => $authorsConfig->id,
-        'payload' => ['uuid' => 'author-1']
+        'payload' => ['uuid' => 'author-1'],
     ]);
 
-    $post = \A21ns1g4ts\FilamentCollections\Models\CollectionData::factory()->create([
+    $post = CollectionData::factory()->create([
         'collection_config_id' => $postsConfig->id,
-        'payload' => ['uuid' => 'post-1', 'author' => 'author-1']
+        'payload' => ['uuid' => 'post-1', 'author' => 'author-1'],
     ]);
 
-    $this->expectException(\Illuminate\Validation\ValidationException::class);
+    $this->expectException(ValidationException::class);
     $author->delete();
 });
 
 it('cascades deletion if on_delete is cascade', function () {
-    $authorsConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::factory()->create([
+    $authorsConfig = CollectionConfig::factory()->create([
         'key' => 'authors',
         'schema' => [
-            ['name' => 'posts', 'type' => 'collection', 'relationship_type' => 'hasMany', 'target_collection_key' => 'posts', 'on_delete' => 'cascade']
+            ['name' => 'posts', 'type' => 'collection', 'relationship_type' => 'hasMany', 'target_collection_key' => 'posts', 'on_delete' => 'cascade'],
         ],
     ]);
 
-    $postsConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::factory()->create([
+    $postsConfig = CollectionConfig::factory()->create([
         'key' => 'posts',
         'schema' => [
-            ['name' => 'author', 'type' => 'collection', 'relationship_type' => 'belongsTo', 'target_collection_key' => 'authors', 'on_delete' => 'cascade']
+            ['name' => 'author', 'type' => 'collection', 'relationship_type' => 'belongsTo', 'target_collection_key' => 'authors', 'on_delete' => 'cascade'],
         ],
     ]);
 
-    $author = \A21ns1g4ts\FilamentCollections\Models\CollectionData::factory()->create([
+    $author = CollectionData::factory()->create([
         'collection_config_id' => $authorsConfig->id,
-        'payload' => ['uuid' => 'author-1']
+        'payload' => ['uuid' => 'author-1'],
     ]);
 
-    $post = \A21ns1g4ts\FilamentCollections\Models\CollectionData::factory()->create([
+    $post = CollectionData::factory()->create([
         'collection_config_id' => $postsConfig->id,
-        'payload' => ['uuid' => 'post-1', 'author' => 'author-1']
+        'payload' => ['uuid' => 'post-1', 'author' => 'author-1'],
     ]);
 
     $author->delete();
 
-    expect(\A21ns1g4ts\FilamentCollections\Models\CollectionData::where('id', $post->id)->exists())->toBeFalse();
+    expect(CollectionData::where('id', $post->id)->exists())->toBeFalse();
 });
 
 it('sets null on related records if on_delete is set_null', function () {
-    $authorsConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::factory()->create([
+    $authorsConfig = CollectionConfig::factory()->create([
         'key' => 'authors',
         'schema' => [
-            ['name' => 'posts', 'type' => 'collection', 'relationship_type' => 'hasMany', 'target_collection_key' => 'posts', 'on_delete' => 'set_null']
+            ['name' => 'posts', 'type' => 'collection', 'relationship_type' => 'hasMany', 'target_collection_key' => 'posts', 'on_delete' => 'set_null'],
         ],
     ]);
 
-    $postsConfig = \A21ns1g4ts\FilamentCollections\Models\CollectionConfig::factory()->create([
+    $postsConfig = CollectionConfig::factory()->create([
         'key' => 'posts',
         'schema' => [
-            ['name' => 'author', 'type' => 'collection', 'relationship_type' => 'belongsTo', 'target_collection_key' => 'authors', 'on_delete' => 'set_null']
+            ['name' => 'author', 'type' => 'collection', 'relationship_type' => 'belongsTo', 'target_collection_key' => 'authors', 'on_delete' => 'set_null'],
         ],
     ]);
 
-    $author = \A21ns1g4ts\FilamentCollections\Models\CollectionData::factory()->create([
+    $author = CollectionData::factory()->create([
         'collection_config_id' => $authorsConfig->id,
-        'payload' => ['uuid' => 'author-1']
+        'payload' => ['uuid' => 'author-1'],
     ]);
 
-    $post = \A21ns1g4ts\FilamentCollections\Models\CollectionData::factory()->create([
+    $post = CollectionData::factory()->create([
         'collection_config_id' => $postsConfig->id,
-        'payload' => ['uuid' => 'post-1', 'author' => 'author-1']
+        'payload' => ['uuid' => 'post-1', 'author' => 'author-1'],
     ]);
 
     $author->delete();

@@ -2,13 +2,14 @@
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
+use A21ns1g4ts\FilamentCollections\Tests\Fixtures\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $this->user = \A21ns1g4ts\FilamentCollections\Tests\Fixtures\User::factory()->create();
+    $this->user = User::factory()->create();
 
     $this->token = $this->user->createToken('token', ['*']);
 });
@@ -19,12 +20,12 @@ it('can fetch collection data', function () {
         'schema' => [
             ['name' => 'title', 'type' => 'text'],
             ['name' => 'published_at', 'type' => 'date'],
-        ]
+        ],
     ]);
 
     CollectionData::factory()->count(5)->create([
         'collection_config_id' => $config->id,
-        'payload' => ['title' => 'Post 1', 'published_at' => '2025-07-31']
+        'payload' => ['title' => 'Post 1', 'published_at' => '2025-07-31'],
     ]);
 
     $this->getJson("/api/collections/{$config->key}")
@@ -37,17 +38,17 @@ it('can filter by text field', function () {
         'key' => 'posts',
         'schema' => [
             ['name' => 'title', 'type' => 'text'],
-        ]
+        ],
     ]);
 
     CollectionData::factory()->create([
         'collection_config_id' => $config->id,
-        'payload' => ['title' => 'Hello World']
+        'payload' => ['title' => 'Hello World'],
     ]);
 
     CollectionData::factory()->create([
         'collection_config_id' => $config->id,
-        'payload' => ['title' => 'Another Post']
+        'payload' => ['title' => 'Another Post'],
     ]);
 
     $this->getJson("/api/collections/{$config->key}?filters[title]=Hello World")
@@ -61,17 +62,17 @@ it('can search by text field', function () {
         'key' => 'posts',
         'schema' => [
             ['name' => 'title', 'type' => 'text'],
-        ]
+        ],
     ]);
 
     CollectionData::factory()->create([
         'collection_config_id' => $config->id,
-        'payload' => ['title' => 'Hello World']
+        'payload' => ['title' => 'Hello World'],
     ]);
 
     CollectionData::factory()->create([
         'collection_config_id' => $config->id,
-        'payload' => ['title' => 'Another Post']
+        'payload' => ['title' => 'Another Post'],
     ]);
 
     $this->getJson("/api/collections/{$config->key}?search[title]=Hello")
@@ -86,14 +87,14 @@ it('can create a new record', function () {
         'schema' => [
             ['name' => 'name', 'type' => 'text', 'required' => true],
             ['name' => 'price', 'type' => 'number', 'required' => true],
-        ]
+        ],
     ]);
 
     $payload = [
         'payload' => [
             'name' => 'New Product',
-            'price' => 99.99
-        ]
+            'price' => 99.99,
+        ],
     ];
 
     $this->postJson("/api/collections/{$config->key}", $payload)
@@ -102,7 +103,7 @@ it('can create a new record', function () {
 
     $this->assertDatabaseHas('collection_data', [
         'collection_config_id' => $config->id,
-        'payload->name' => 'New Product'
+        'payload->name' => 'New Product',
     ]);
 });
 
@@ -110,7 +111,7 @@ it('can show a record', function () {
     $config = CollectionConfig::factory()->create(['key' => 'pages']);
     $record = CollectionData::factory()->create([
         'collection_config_id' => $config->id,
-        'payload' => ['title' => 'About Us', 'uuid' => (string) Str::uuid()]
+        'payload' => ['title' => 'About Us', 'uuid' => (string) Str::uuid()],
     ]);
 
     $this->getJson("/api/collections/{$config->key}/{$record->payload['uuid']}")
@@ -122,14 +123,14 @@ it('can update a record', function () {
     $config = CollectionConfig::factory()->create(['key' => 'tasks']);
     $record = CollectionData::factory()->create([
         'collection_config_id' => $config->id,
-        'payload' => ['title' => 'Old Title', 'completed' => false, 'uuid' => (string) Str::uuid()]
+        'payload' => ['title' => 'Old Title', 'completed' => false, 'uuid' => (string) Str::uuid()],
     ]);
 
     $payload = [
         'payload' => [
             'title' => 'New Title',
-            'completed' => true
-        ]
+            'completed' => true,
+        ],
     ];
 
     $this->putJson("/api/collections/{$config->key}/{$record->payload['uuid']}", $payload)
@@ -138,7 +139,7 @@ it('can update a record', function () {
 
     $this->assertDatabaseHas('collection_data', [
         'id' => $record->id,
-        'payload->title' => 'New Title'
+        'payload->title' => 'New Title',
     ]);
 });
 
@@ -146,7 +147,7 @@ it('can delete a record', function () {
     $config = CollectionConfig::factory()->create(['key' => 'users']);
     $record = CollectionData::factory()->create([
         'collection_config_id' => $config->id,
-        'payload' => ['uuid' => (string) Str::uuid()]
+        'payload' => ['uuid' => (string) Str::uuid()],
     ]);
 
     $this->deleteJson("/api/collections/{$config->key}/{$record->payload['uuid']}")
@@ -162,7 +163,7 @@ it('enforces validation rules defined in collection config', function () {
             ['name' => 'name', 'type' => 'text', 'required' => true],
             ['name' => 'price', 'type' => 'number', 'required' => true],
             ['name' => 'sku', 'type' => 'text', 'unique' => true],
-        ]
+        ],
     ]);
 
     // Missing required fields
@@ -173,11 +174,11 @@ it('enforces validation rules defined in collection config', function () {
     // Duplicate unique field
     CollectionData::factory()->create([
         'collection_config_id' => $config->id,
-        'payload' => ['name' => 'Product 1', 'price' => 10, 'sku' => 'SKU-001']
+        'payload' => ['name' => 'Product 1', 'price' => 10, 'sku' => 'SKU-001'],
     ]);
 
     $this->postJson("/api/collections/{$config->key}", [
-        'payload' => ['name' => 'Product 2', 'price' => 20, 'sku' => 'SKU-001']
+        'payload' => ['name' => 'Product 2', 'price' => 20, 'sku' => 'SKU-001'],
     ])
         ->assertStatus(422)
         ->assertJsonValidationErrors(['payload.sku']);
@@ -189,13 +190,13 @@ it('automatically generates slugs based on collection config', function () {
         'schema' => [
             ['name' => 'title', 'type' => 'text', 'required' => true],
             ['name' => 'slug', 'type' => 'text', 'sluggable' => true, 'slug_source' => 'title'],
-        ]
+        ],
     ]);
 
     $payload = [
         'payload' => [
-            'title' => 'My Awesome Post'
-        ]
+            'title' => 'My Awesome Post',
+        ],
     ];
 
     $this->postJson("/api/collections/{$config->key}", $payload)
@@ -204,6 +205,6 @@ it('automatically generates slugs based on collection config', function () {
 
     $this->assertDatabaseHas('collection_data', [
         'collection_config_id' => $config->id,
-        'payload->slug' => 'my-awesome-post'
+        'payload->slug' => 'my-awesome-post',
     ]);
 });

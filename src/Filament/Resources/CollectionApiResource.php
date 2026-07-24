@@ -3,21 +3,20 @@
 namespace A21ns1g4ts\FilamentCollections\Filament\Resources;
 
 use A21ns1g4ts\FilamentCollections\Filament\Clusters\Collections;
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionApiResource\Pages;
 use A21ns1g4ts\FilamentCollections\Models\CollectionApi;
-use Filament\Forms;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Schemas\Schema;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
-use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionApiResource\Pages;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Schemas\Schema;
+use Filament\Tables;
+use Filament\Tables\Table;
 
 class CollectionApiResource extends Resource
 {
@@ -39,33 +38,36 @@ class CollectionApiResource extends Resource
 
     public static function form(Schema $form): Schema
     {
-        return $form->schema([
+        return $form->columns(1)->schema([
             Section::make()
+                ->columnSpanFull()
                 ->schema([
                     TextInput::make('name')
+                        ->label(__('filament-collections::default.fields.name'))
                         ->required()
                         ->maxLength(50),
                     Select::make('personal_access_token_id')
                         ->relationship('token', 'name')
-                        ->label('Token Sanctum')
+                        ->label(__('filament-collections::default.fields.token'))
                         ->searchable()
                         ->preload()
                         ->nullable(),
                     Select::make('configs')
                         ->relationship('configs', 'key')
                         ->multiple()
-                        ->label('Collections')
+                        ->label(__('filament-collections::default.fields.collections'))
                         ->preload()
                         ->searchable(),
                     Select::make('groups')
                         ->relationship('groups', 'name')
                         ->multiple()
-                        ->label('Groups')
+                        ->label(__('filament-collections::default.fields.groups'))
                         ->preload()
                         ->searchable(),
                     Toggle::make('active')
+                        ->label(__('filament-collections::default.fields.active'))
                         ->default(true),
-                ])
+                ]),
         ]);
     }
 
@@ -73,14 +75,19 @@ class CollectionApiResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->label(__('filament-collections::default.fields.name'))
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('token.name')
-                    ->label('Token'),
+                    ->label(__('filament-collections::default.fields.token')),
                 Tables\Columns\TextColumn::make('configs.key')
-                    ->label('Collections')
+                    ->label(__('filament-collections::default.fields.collections'))
                     ->badge(),
-                Tables\Columns\IconColumn::make('active')->boolean(),
+                Tables\Columns\IconColumn::make('active')
+                    ->label(__('filament-collections::default.fields.active'))
+                    ->boolean(),
                 Tables\Columns\TextColumn::make('created_at')
+                    ->label(__('filament-collections::default.fields.created_at'))
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

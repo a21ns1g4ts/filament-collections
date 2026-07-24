@@ -15,7 +15,7 @@ class SeedCollectionsCommand extends Command
     {
         $type = $this->argument('type');
 
-        if (!$type) {
+        if (! $type) {
             $type = $this->choice(
                 'Which template would you like to seed?',
                 ['blog', 'cms'],
@@ -35,10 +35,12 @@ class SeedCollectionsCommand extends Command
                     break;
                 default:
                     $this->error("Unknown template: {$type}");
+
                     return self::FAILURE;
             }
         } catch (\Exception $e) {
             $this->error("Failed to seed: {$e->getMessage()}");
+
             return self::FAILURE;
         }
 

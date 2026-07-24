@@ -36,8 +36,8 @@ class FilamentCollectionsFactory
                         'relationship_type' => 'hasMany',
                         'target_collection_key' => 'posts',
                         'inverse_relationship_name' => 'category',
-                        'on_delete' => 'restrict'
-                    ]
+                        'on_delete' => 'restrict',
+                    ],
                 ],
             ]
         );
@@ -57,8 +57,8 @@ class FilamentCollectionsFactory
                         'relationship_type' => 'belongsToMany',
                         'target_collection_key' => 'posts',
                         'inverse_relationship_name' => 'tags',
-                        'on_delete' => 'restrict'
-                    ]
+                        'on_delete' => 'restrict',
+                    ],
                 ],
             ]
         );
@@ -80,7 +80,7 @@ class FilamentCollectionsFactory
                         'relationship_type' => 'belongsTo',
                         'target_collection_key' => 'categories',
                         'inverse_relationship_name' => 'posts',
-                        'on_delete' => 'restrict'
+                        'on_delete' => 'restrict',
                     ],
                     [
                         'name' => 'tags',
@@ -88,7 +88,7 @@ class FilamentCollectionsFactory
                         'relationship_type' => 'belongsToMany',
                         'target_collection_key' => 'tags',
                         'inverse_relationship_name' => 'posts',
-                        'on_delete' => 'restrict'
+                        'on_delete' => 'restrict',
                     ],
                 ],
             ]

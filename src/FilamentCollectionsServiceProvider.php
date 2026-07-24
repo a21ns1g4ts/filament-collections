@@ -87,7 +87,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
 
         // Handle Stubs
         if (app()->runningInConsole()) {
-            foreach (app(Filesystem::class)->files(__DIR__ . '/../stubs/') as $file) {
+            foreach (app(Filesystem::class)->files(__DIR__.'/../stubs/') as $file) {
                 $this->publishes([
                     $file->getRealPath() => base_path("stubs/filament-collections/{$file->getFilename()}"),
                 ], 'filament-collections-stubs');
@@ -143,7 +143,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     protected function getRoutes(): array
     {
         return [
-            __DIR__ . '/../routes/api.php',
+            __DIR__.'/../routes/api.php',
         ];
     }
 
@@ -161,10 +161,10 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     protected function getMigrations(): array
     {
         return [
-            'create_collections_config_table',
-            'create_collection_data_table',
-            'create_collection_apis_table',
-            'create_collection_groups_table',
+            '0001_create_collections_config_table',
+            '0002_create_collection_data_table',
+            '0004_create_collection_apis_table',
+            '0003_create_collection_groups_table',
         ];
     }
 }

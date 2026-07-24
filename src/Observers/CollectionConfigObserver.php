@@ -41,9 +41,8 @@ class CollectionConfigObserver
             CollectionData::where('collection_config_id', $collectionConfig->id)
                 ->where(DB::raw("json_extract(payload, '$.\"{$field['name']}\"')"), '!=', null)
                 ->update([
-                    'payload' => DB::raw("json_remove(payload, '$.\"{$field['name']}\"')")
+                    'payload' => DB::raw("json_remove(payload, '$.\"{$field['name']}\"')"),
                 ]);
-
 
             $targetCollectionKey = $field['target_collection_key'] ?? null;
             if (! $targetCollectionKey) {
@@ -74,7 +73,7 @@ class CollectionConfigObserver
             CollectionData::where('collection_config_id', $targetConfig->id)
                 ->where(DB::raw("json_extract(payload, '$.\"{$inverseRelationshipName}\"')"), '!=', null)
                 ->update([
-                    'payload' => DB::raw("json_remove(payload, '$.\"{$inverseRelationshipName}\"')")
+                    'payload' => DB::raw("json_remove(payload, '$.\"{$inverseRelationshipName}\"')"),
                 ]);
 
             // Remove the inverse field from the target schema

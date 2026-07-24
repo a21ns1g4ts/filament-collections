@@ -52,10 +52,10 @@ class CollectionDataController extends Controller
         }
 
         $payload = $validator->validated()['payload'];
-        
+
         // Server-side slug generation if enabled and missing
         $payload = $this->applySluggableData($config, $payload);
-        
+
         $payload['uuid'] = Str::uuid()->toString();
 
         $record = CollectionData::create([
@@ -93,10 +93,10 @@ class CollectionDataController extends Controller
         }
 
         $payload = $validator->validated()['payload'];
-        
+
         // Server-side slug generation if enabled
         $payload = $this->applySluggableData($config, $payload);
-        
+
         $currentPayload = $record->payload;
 
         foreach ($payload as $key => $value) {
@@ -154,7 +154,7 @@ class CollectionDataController extends Controller
         }
 
         return CollectionData::where('collection_config_id', $config->id)
-            ->where("payload->uuid", $id)
+            ->where('payload->uuid', $id)
             ->first();
     }
 

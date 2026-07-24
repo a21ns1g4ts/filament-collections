@@ -2,6 +2,7 @@
 
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use A21ns1g4ts\FilamentCollections\Models\CollectionData;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Schema;
 
 it('can resolve belongsTo relationships dynamically', function () {
@@ -108,7 +109,7 @@ it('can resolve hasMany relationships dynamically', function () {
     $relatedPosts = $authorData->posts;
 
     // Assert
-    expect($relatedPosts)->toBeInstanceOf(\Illuminate\Database\Eloquent\Collection::class)
+    expect($relatedPosts)->toBeInstanceOf(Collection::class)
         ->and($relatedPosts->count())->toBe(2)
         ->and($relatedPosts->pluck('payload.title'))->toContain('First post by Jane', 'Second post by Jane');
 });
@@ -210,7 +211,7 @@ it('can resolve belongsToMany relationships dynamically', function () {
     $relatedReviewers = $postData->reviewers;
 
     // Assert
-    expect($relatedReviewers)->toBeInstanceOf(\Illuminate\Database\Eloquent\Collection::class)
+    expect($relatedReviewers)->toBeInstanceOf(Collection::class)
         ->and($relatedReviewers->count())->toBe(2)
         ->and($relatedReviewers->pluck('payload.name'))->toContain('Jane Smith', 'Peter Jones');
 });

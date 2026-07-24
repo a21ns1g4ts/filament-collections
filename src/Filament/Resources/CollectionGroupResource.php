@@ -3,21 +3,19 @@
 namespace A21ns1g4ts\FilamentCollections\Filament\Resources;
 
 use A21ns1g4ts\FilamentCollections\Filament\Clusters\Collections;
+use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionGroupResource\Pages;
 use A21ns1g4ts\FilamentCollections\Models\CollectionGroup;
-use Filament\Forms;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section as SchemaSection;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Section;
-use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionGroupResource\Pages;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Schemas\Components\Section as SchemaSection;
 
 class CollectionGroupResource extends Resource
 {
@@ -39,20 +37,24 @@ class CollectionGroupResource extends Resource
 
     public static function form(Schema $form): Schema
     {
-        return $form->schema([
+        return $form->columns(1)->schema([
             SchemaSection::make()
+                ->columnSpanFull()
                 ->schema([
                     TextInput::make('name')
+                        ->label(__('filament-collections::default.fields.name'))
                         ->required()
                         ->maxLength(255),
                     TextInput::make('key')
+                        ->label(__('filament-collections::default.fields.key'))
                         ->required()
                         ->unique(ignoreRecord: true)
                         ->maxLength(50),
                     Textarea::make('description')
+                        ->label(__('filament-collections::default.fields.description'))
                         ->maxLength(65535)
                         ->columnSpanFull(),
-                ])
+                ]),
         ]);
     }
 
@@ -60,12 +62,17 @@ class CollectionGroupResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable(),
-                Tables\Columns\TextColumn::make('key')->searchable(),
+                Tables\Columns\TextColumn::make('name')
+                    ->label(__('filament-collections::default.fields.name'))
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('key')
+                    ->label(__('filament-collections::default.fields.key'))
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('configs_count')
                     ->counts('configs')
-                    ->label('Collections'),
+                    ->label(__('filament-collections::default.fields.collections')),
                 Tables\Columns\TextColumn::make('created_at')
+                    ->label(__('filament-collections::default.fields.created_at'))
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),

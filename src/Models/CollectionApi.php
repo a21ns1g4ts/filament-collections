@@ -4,7 +4,7 @@ namespace A21ns1g4ts\FilamentCollections\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class CollectionApi extends Model
@@ -12,15 +12,19 @@ class CollectionApi extends Model
     use HasFactory;
 
     protected $fillable = [
-        'collection_config_id',
         'personal_access_token_id',
         'name',
         'active',
     ];
 
-    public function config(): BelongsTo
+    public function configs(): BelongsToMany
     {
-        return $this->belongsTo(CollectionConfig::class);
+        return $this->belongsToMany(CollectionConfig::class, 'collection_api_configs');
+    }
+
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(CollectionGroup::class, 'collection_api_groups');
     }
 
     public function token()

@@ -22,6 +22,7 @@ class CollectionConfigFactory extends Factory
         return [
             'key' => $this->faker->unique()->slug(2),
             'description' => $this->faker->sentence(),
+            'title_field' => 'title',
             'schema' => [
                 'type' => 'object',
                 'properties' => [

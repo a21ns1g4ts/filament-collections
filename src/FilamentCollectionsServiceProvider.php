@@ -3,6 +3,11 @@
 namespace A21ns1g4ts\FilamentCollections;
 
 use A21ns1g4ts\FilamentCollections\Commands\FilamentCollectionsCommand;
+use A21ns1g4ts\FilamentCollections\Commands\SeedCollectionsCommand;
+use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
+use A21ns1g4ts\FilamentCollections\Models\CollectionData;
+use A21ns1g4ts\FilamentCollections\Observers\CollectionConfigObserver;
+use A21ns1g4ts\FilamentCollections\Observers\CollectionDataObserver;
 use A21ns1g4ts\FilamentCollections\Testing\TestsFilamentCollections;
 use Filament\Support\Assets\AlpineComponent;
 use Filament\Support\Assets\Asset;
@@ -82,7 +87,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
 
         // Handle Stubs
         if (app()->runningInConsole()) {
-            foreach (app(Filesystem::class)->files(__DIR__ . '/../stubs/') as $file) {
+            foreach (app(Filesystem::class)->files(__DIR__.'/../stubs/') as $file) {
                 $this->publishes([
                     $file->getRealPath() => base_path("stubs/filament-collections/{$file->getFilename()}"),
                 ], 'filament-collections-stubs');
@@ -91,6 +96,9 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
 
         // Testing
         Testable::mixin(new TestsFilamentCollections);
+
+        CollectionConfig::observe(CollectionConfigObserver::class);
+        CollectionData::observe(CollectionDataObserver::class);
     }
 
     protected function getAssetPackageName(): ?string
@@ -117,6 +125,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     {
         return [
             FilamentCollectionsCommand::class,
+            SeedCollectionsCommand::class,
         ];
     }
 
@@ -134,7 +143,7 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     protected function getRoutes(): array
     {
         return [
-            __DIR__ . '/../routes/api.php',
+            __DIR__.'/../routes/api.php',
         ];
     }
 
@@ -152,8 +161,10 @@ class FilamentCollectionsServiceProvider extends PackageServiceProvider
     protected function getMigrations(): array
     {
         return [
-            'create_collection_configs_table',
-            'create_collections_data_table',
+            '0001_create_collections_config_table',
+            '0002_create_collection_data_table',
+            '0004_create_collection_apis_table',
+            '0003_create_collection_groups_table',
         ];
     }
 }

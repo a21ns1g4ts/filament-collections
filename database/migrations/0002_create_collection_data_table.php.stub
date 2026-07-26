@@ -8,19 +8,18 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('collection_configs', function (Blueprint $table) {
+        Schema::create('collection_data', function (Blueprint $table) {
             $table->id();
-
-            $table->string('key')->unique();
-            $table->text('description')->nullable();
-            $table->json('schema');
-            $table->json('ui_schema')->nullable();
+            $table->foreignId('collection_config_id')
+                  ->constrained('collection_configs')
+                  ->cascadeOnDelete();
+            $table->json('payload');
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('collection_configs');
+        Schema::dropIfExists('collection_data');
     }
 };

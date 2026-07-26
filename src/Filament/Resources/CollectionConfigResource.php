@@ -10,6 +10,7 @@ use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\P
 use A21ns1g4ts\FilamentCollections\Filament\Resources\CollectionConfigResource\RelationManagers\DataRelationManager;
 use A21ns1g4ts\FilamentCollections\Models\CollectionConfig;
 use Closure;
+use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -21,13 +22,13 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Resources\Resource; // Importar Closure
+use Filament\Tables;
+use Filament\Resources\Resource;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Table;
-use ValentinMorice\FilamentJsonColumn\JsonColumn;
+use Livewire\Form;
 
 class CollectionConfigResource extends Resource
 {
@@ -35,13 +36,7 @@ class CollectionConfigResource extends Resource
 
     protected static ?string $cluster = Collections::class;
 
-    protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-rectangle-stack';
-
-    public static function getNavigationParentItem(): ?string
-    {
-        // not work __('filament-collections::default.resources.group.plural')
-        return 'Grupos';
-    }
+    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-inbox-stack';
 
     public static function getNavigationLabel(): string
     {
@@ -307,10 +302,10 @@ class CollectionConfigResource extends Resource
                                     ->visible(fn ($get) => $get('type') === 'color')
                                     ->columnSpan(4),
 
-                                JsonColumn::make('default')
+                                TextInput::make('default')
                                     ->label(__('filament-collections::default.fields.default'))
                                     ->nullable()
-                                    ->editorOnly()
+                                    ->readOnly()
                                     ->visible(fn ($get) => $get('type') === 'json')
                                     ->columnSpan(4),
 
